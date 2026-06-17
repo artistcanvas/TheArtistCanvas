@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import localFont from "next/font/local";
+import { Nav } from "./_components/nav/Nav";
 import "./globals.css";
 
 export const pretendard = localFont({
@@ -50,7 +51,7 @@ export const pretendard = localFont({
       style: "normal",
     },
   ],
-  variable: "--font-pretendard-local",
+  variable: "--font-pretendard",
   display: "swap",
 });
 
@@ -66,7 +67,10 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="ko" className={`${pretendard.variable} h-full antialiased`}>
-      <body className="min-h-full flex flex-col">{children}</body>
+      <body className="min-h-full flex flex-col">
+        <Nav />
+        {children}
+      </body>
     </html>
   );
 }
