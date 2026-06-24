@@ -1,5 +1,11 @@
+import { Hero } from "./_components/hero/Hero";
+import { HowTo } from "./_components/hero/HowTo";
+
 export default function Home() {
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black"></div>
+    <div>
+      <Hero />
+      <HowTo />
+    </div>
   );
 }

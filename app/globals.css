@@ -1,12 +1,13 @@
 @import "tailwindcss";
 
 :root {
-  --background: #000000;
+  --background: #060607;
 }
 
 @theme inline {
   --color-background: var(--background);
   --font-sans: var(--font-pretendard);
+  --font-arial: var(--font-arial);
 }
 
 html,
