@@ -14,8 +14,12 @@ export const Hero = () => {
             그들의 이야기가 시작되는 곳
           </p>
           <div className="w-max border-b border-[#5B5A62] pb-[10px]">
-            <Link href="/work" className="text-[20px] font-semibold">
+            <Link
+              href="/work"
+              className="inline-flex items-center gap-[8px] text-[20px] font-semibold"
+            >
               WORKS 보기
+              <span aria-hidden="true">-&gt;</span>
             </Link>
           </div>
         </div>
