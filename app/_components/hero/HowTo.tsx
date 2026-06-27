@@ -1,44 +1,112 @@
-import { HowToCard } from "./HowToCard";
+"use client";
+import { useEffect, useRef, useState } from "react";
+import AnimatedQuote from "./AnimatedQuote";
+import HowToCard from "./HowToCard";
+import ProgressLine from "./ProgressLine";
 
-export const HowTo = () => {
+const LINE_DRAW_DURATION = 1000;
+
+export default function HowTo() {
+  const lineTrackRef = useRef<HTMLDivElement>(null);
+  const hasStartedRef = useRef(false);
+  const scrollAnimationFrameRef = useRef<number | null>(null);
+  const [isLineActive, setIsLineActive] = useState(false);
+  const [isLineComplete, setIsLineComplete] = useState(false);
+
+  useEffect(() => {
+    if (!lineTrackRef.current) return;
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (!entry.isIntersecting || hasStartedRef.current) return;
+
+        hasStartedRef.current = true;
+        setIsLineActive(true);
+
+        const startY = window.scrollY;
+        const lineTrackTop =
+          lineTrackRef.current!.getBoundingClientRect().top + window.scrollY;
+        const lineTrackHeight = lineTrackRef.current!.offsetHeight + 20;
+        const followPoint = window.innerHeight - 10;
+        const startTime = performance.now();
+
+        const animateScroll = (time: number) => {
+          const elapsed = Math.min((time - startTime) / LINE_DRAW_DURATION, 1);
+          const currentLineEnd = lineTrackTop + lineTrackHeight * elapsed;
+          const nextY = Math.max(startY, currentLineEnd - followPoint);
+
+          window.scrollTo(0, nextY);
+
+          if (elapsed < 1) {
+            scrollAnimationFrameRef.current =
+              window.requestAnimationFrame(animateScroll);
+          }
+        };
+
+        scrollAnimationFrameRef.current =
+          window.requestAnimationFrame(animateScroll);
+      },
+      {
+        rootMargin: "0px 0px -10px 0px",
+        threshold: 0.01,
+      },
+    );
+
+    observer.observe(lineTrackRef.current);
+
+    return () => {
+      observer.disconnect();
+
+      if (scrollAnimationFrameRef.current) {
+        window.cancelAnimationFrame(scrollAnimationFrameRef.current);
+      }
+    };
+  }, []);
+
   return (
-    <div className="px-[170px]">
-      <div className="flex flex-col justify-between gap-[150px]">
-        <h1 className="text-[136px] font-black">HOW TO?</h1>
-        <div className="w-full flex justify-end">
-          <div className="relative">
-            <span className="relative z-1 text-[80px] font-semibold">
-              Where artists stay
-              <br />
-              Where their stories begin.
-            </span>
-            <span className="absolute -top-20 -left-20 font-arial text-[240.5px] leading-none font-black text-[#262626]">
-              “
-            </span>
+    <section
+      id="works"
+      className="relative min-h-[2200px] flex justify-center overflow-hidden py-28"
+    >
+      <div className="w-[1580px]">
+        <h2 className="text-[56px] text-start font-black leading-none tracking-[-0.04em] md:text-[120px] lg:text-[150px]">
+          HOW TO?
+        </h2>
+
+        <div className="mt-28 md:mt-[158px] flex justify-end">
+          <AnimatedQuote />
+        </div>
+
+        <div className="relative mt-80 grid gap-20 md:mt-[520px] md:min-h-[1510px] md:grid-cols-[1fr_1fr] md:items-end">
+          <div
+            ref={lineTrackRef}
+            className="relative min-h-[1200px] pl-10 md:min-h-[1510px] md:pl-[50px]"
+          >
+            <ProgressLine
+              isActive={isLineActive}
+              duration={LINE_DRAW_DURATION / 1000}
+              onComplete={() => setIsLineComplete(true)}
+            />
+
+            <div className="absolute bottom-0 left-10 md:left-[50px]">
+              <h3 className="text-2xl font-semibold md:text-3xl">
+                How We Create
+              </h3>
+
+              <p className="mt-8 text-base leading-8 text-white md:text-xl md:leading-9">
+                <strong className="font-semibold">
+                  우리는 사람에게서 이야기를 찾습니다.
+                </strong>
+                <br />
+                아티스트가 가진 매력과 개성을 발견하고
+                <br />그 사람만이 보여줄 수 있는 콘텐츠를 기획하고 제작합니다.
+              </p>
+            </div>
           </div>
+
+          <HowToCard shouldReveal={isLineComplete} />
         </div>
       </div>
-      <div className="flex items-end justify-between">
-        <div className="mt-[300px] w-[5px] h-[1441px] bg-white" />
-        <div className="w-full flex justify-between items-end ml-[45px]">
-          <div className="">
-            <p>How We Create</p>
-            <p className="text-[20px]">
-              <span className="font-semibold">
-                우리는 사람에게서 이야기를 찾습니다.
-              </span>
-              <br />
-              아티스트가 가진 매력과 개성을 발견하고
-              <br />그 사람만이 보여줄 수 있는 콘텐츠를 기획하고 제작합니다.
-            </p>
-          </div>
-          <div className="flex flex-col gap-[7px]">
-            <HowToCard />
-            <HowToCard />
-            <HowToCard />
-          </div>
-        </div>
-      </div>
-    </div>
+    </section>
   );
-};
+}
