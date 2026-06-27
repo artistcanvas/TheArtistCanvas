@@ -5,6 +5,7 @@ import HowToCard from "./HowToCard";
 import ProgressLine from "./ProgressLine";
 
 const LINE_DRAW_DURATION = 1000;
+const MD_BREAKPOINT = 768;
 
 export default function HowTo() {
   const lineTrackRef = useRef<HTMLDivElement>(null);
@@ -22,6 +23,12 @@ export default function HowTo() {
 
         hasStartedRef.current = true;
         setIsLineActive(true);
+
+        const shouldAutoScroll = window.matchMedia(
+          `(min-width: ${MD_BREAKPOINT}px)`,
+        ).matches;
+
+        if (!shouldAutoScroll) return;
 
         const startY = window.scrollY;
         const lineTrackTop =
@@ -66,21 +73,21 @@ export default function HowTo() {
   return (
     <section
       id="works"
-      className="relative min-h-[2200px] flex justify-center overflow-hidden py-28"
+      className="relative flex justify-center overflow-hidden pt-[clamp(206px,calc((446/1920)*100vw),446px)]"
     >
-      <div className="w-[1580px]">
-        <h2 className="text-[56px] text-start font-black leading-none tracking-[-0.04em] md:text-[120px] lg:text-[150px]">
+      <div className="w-full max-w-[1920px] px-5 md:px-[clamp(20px,calc((170/1920)*100vw),170px)]">
+        <h2 className="text-[clamp(42px,calc((136/1920)*100vw),136px)] text-start font-extrabold leading-none tracking-[-0.04em]">
           HOW TO?
         </h2>
 
-        <div className="mt-28 md:mt-[158px] flex justify-end">
+        <div className="mt-[clamp(137px,calc((240/1920)*100vw),240px)] mb-[clamp(327px,calc((355/1920)*100vw),355px)] flex justify-end md:mb-[clamp(206px,calc((355/1920)*100vw),355px)]">
           <AnimatedQuote />
         </div>
 
-        <div className="relative mt-80 grid gap-20 md:mt-[520px] md:min-h-[1510px] md:grid-cols-[1fr_1fr] md:items-end">
+        <div className="relative grid gap-[36px] md:gap-20 md:min-h-[1510px] md:grid-cols-[1fr_1fr] md:items-end">
           <div
             ref={lineTrackRef}
-            className="relative min-h-[1200px] pl-10 md:min-h-[1510px] md:pl-[50px]"
+            className="relative mx-auto w-full md:mx-0 md:min-h-[1441px] md:w-auto md:pl-[50px]"
           >
             <ProgressLine
               isActive={isLineActive}
@@ -88,18 +95,19 @@ export default function HowTo() {
               onComplete={() => setIsLineComplete(true)}
             />
 
-            <div className="absolute bottom-0 left-10 md:left-[50px]">
-              <h3 className="text-2xl font-semibold md:text-3xl">
+            <div className="md:absolute md:bottom-0 md:left-[50px]">
+              <h3 className="text-[clamp(24px,calc((30/1920)*100vw),30px)] font-medium">
                 How We Create
               </h3>
 
-              <p className="mt-8 text-base leading-8 text-white md:text-xl md:leading-9">
-                <strong className="font-semibold">
+              <p className="mt-[clamp(27px,calc((35/1920)*100vw),35px)] text-[clamp(14px,calc((20/1920)*100vw),20px)] font-light leading-8 text-white md:leading-9">
+                <strong className="font-medium">
                   우리는 사람에게서 이야기를 찾습니다.
                 </strong>
                 <br />
                 아티스트가 가진 매력과 개성을 발견하고
-                <br />그 사람만이 보여줄 수 있는 콘텐츠를 기획하고 제작합니다.
+                <br />
+                그 사람만이 보여줄 수 있는 콘텐츠를 기획하고 제작합니다.
               </p>
             </div>
           </div>

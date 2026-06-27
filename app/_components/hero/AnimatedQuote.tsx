@@ -36,31 +36,34 @@ export default function AnimatedQuote() {
 
   return (
     <div ref={ref} className="relative">
-      <span
-        aria-hidden="true"
-        className="font-arial pointer-events-none absolute -left-8 -top-10 z-0 text-[130px] font-black leading-none text-neutral-800 md:-left-16 md:-top-16 md:text-[210px]"
-      >
-        “
-      </span>
-
-      <p className="relative z-10 text-[38px] font-semibold md:text-[72px]">
+      <p className="relative z-10 text-[clamp(28px,calc((80/1920)*100vw),80px)] text-end text-nowrap md:text-start font-semibold leading-[1.1] md:leading-none">
         {/* 첫 줄 */}
         <span className="relative block">
           {/* 기본 회색 */}
-          <span className="text-neutral-800">Where artists stay</span>
+          <span className="relative inline-block">
+            <span
+              aria-hidden="true"
+              className="font-arial pointer-events-none absolute left-0 top-0 z-0 -translate-x-[0.33em] -translate-y-[0.4em] text-[3.00625em] font-black leading-none text-neutral-800"
+            >
+              “
+            </span>
+            <span className="relative z-10 text-neutral-800">
+              Where artists stay
+            </span>
 
-          <motion.span
-            style={{
-              backgroundImage: firstGradient,
-            }}
-            aria-hidden="true"
-            className="
-              absolute left-0 top-0
-              bg-clip-text text-transparent
-            "
-          >
-            Where artists stay
-          </motion.span>
+            <motion.span
+              style={{
+                backgroundImage: firstGradient,
+              }}
+              aria-hidden="true"
+              className="
+                absolute left-0 top-0 z-10
+                bg-clip-text text-transparent
+              "
+            >
+              Where artists stay
+            </motion.span>
+          </span>
         </span>
 
         {/* 둘째 줄 */}

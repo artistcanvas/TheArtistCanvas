@@ -19,7 +19,7 @@ export default function ProgressLine({
   return (
     <div
       ref={ref}
-      className="absolute bottom-0 left-0 top-0 w-[3px] overflow-hidden md:w-[5px]"
+      className="hidden md:block absolute bottom-0 left-0 top-0 w-[3px] overflow-hidden md:w-[5px]"
     >
       <motion.div
         initial={false}
