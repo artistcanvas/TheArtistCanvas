@@ -36,7 +36,7 @@ export default function AnimatedQuote() {
 
   return (
     <div ref={ref} className="relative">
-      <p className="relative z-10 text-[clamp(28px,calc((80/1920)*100vw),80px)] text-end text-nowrap md:text-start font-semibold leading-[1.1] md:leading-none">
+      <p className="relative z-10 max-w-full text-end text-[clamp(24px,calc((80/1920)*100vw),80px)] font-semibold leading-[1.1] md:text-start md:leading-none">
         {/* 첫 줄 */}
         <span className="relative block">
           {/* 기본 회색 */}
