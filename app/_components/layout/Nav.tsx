@@ -20,7 +20,7 @@ export const Nav = () => {
         <div className="flex w-full max-w-[1660px] items-center md:items-end justify-between">
           <Link
             href={"/"}
-            className="h-max w-max"
+            className="h-max w-[56px] md:w-[clamp(56px,calc((69/1920)*100vw),69px)]"
             onClick={() => setIsMobileMenuOpen(false)}
           >
             <Image width={69} height={24} src={Logo} alt="logo image" />
