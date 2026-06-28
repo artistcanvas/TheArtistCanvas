@@ -36,7 +36,7 @@ export default function AnimatedQuote() {
 
   return (
     <div ref={ref} className="relative">
-      <p className="relative z-10 max-w-full text-end text-[clamp(24px,calc((80/1920)*100vw),80px)] font-semibold leading-[1.1] md:text-start md:leading-none">
+      <p className="relative z-10 max-w-full text-end text-[clamp(24px,calc((80/1920)*100vw),80px)] font-semibold leading-[1.15] md:text-start">
         {/* 첫 줄 */}
         <span className="relative block">
           {/* 기본 회색 */}
@@ -56,10 +56,7 @@ export default function AnimatedQuote() {
                 backgroundImage: firstGradient,
               }}
               aria-hidden="true"
-              className="
-                absolute left-0 top-0 z-10
-                bg-clip-text text-transparent
-              "
+              className="absolute left-0 top-0 z-10 bg-clip-text leading-[inherit] text-transparent"
             >
               Where artists stay
             </motion.span>
@@ -77,7 +74,7 @@ export default function AnimatedQuote() {
             aria-hidden="true"
             className="
               absolute left-0 top-0
-              bg-clip-text text-transparent
+              bg-clip-text leading-[inherit] text-transparent
             "
           >
             Where their stories begin.

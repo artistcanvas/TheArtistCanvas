@@ -6,18 +6,51 @@ import ProgressLine from "./ProgressLine";
 
 const LINE_DRAW_DURATION = 1000;
 const MD_BREAKPOINT = 768;
+const HOW_TO_TOP_OFFSET = 120;
 
 export default function HowTo() {
+  const sectionRef = useRef<HTMLElement>(null);
   const lineTrackRef = useRef<HTMLDivElement>(null);
+  const hasSnappedToSectionRef = useRef(false);
   const hasStartedRef = useRef(false);
   const scrollAnimationFrameRef = useRef<number | null>(null);
   const [isLineActive, setIsLineActive] = useState(false);
   const [isLineComplete, setIsLineComplete] = useState(false);
 
   useEffect(() => {
-    if (!lineTrackRef.current) return;
+    if (!sectionRef.current || !lineTrackRef.current) return;
 
-    const observer = new IntersectionObserver(
+    const sectionObserver = new IntersectionObserver(
+      ([entry]) => {
+        if (
+          !entry.isIntersecting ||
+          hasSnappedToSectionRef.current ||
+          entry.boundingClientRect.top <= 0
+        ) {
+          return;
+        }
+
+        hasSnappedToSectionRef.current = true;
+        const section = sectionRef.current!;
+        const sectionTop = section.getBoundingClientRect().top + window.scrollY;
+        const sectionPaddingTop = parseFloat(
+          window.getComputedStyle(section).paddingTop,
+        );
+
+        window.scrollTo({
+          top: sectionTop + sectionPaddingTop - HOW_TO_TOP_OFFSET,
+          behavior: window.matchMedia("(prefers-reduced-motion: reduce)")
+            .matches
+            ? "auto"
+            : "smooth",
+        });
+      },
+      {
+        threshold: 0.12,
+      },
+    );
+
+    const lineObserver = new IntersectionObserver(
       ([entry]) => {
         if (!entry.isIntersecting || hasStartedRef.current) return;
 
@@ -59,10 +92,12 @@ export default function HowTo() {
       },
     );
 
-    observer.observe(lineTrackRef.current);
+    sectionObserver.observe(sectionRef.current);
+    lineObserver.observe(lineTrackRef.current);
 
     return () => {
-      observer.disconnect();
+      sectionObserver.disconnect();
+      lineObserver.disconnect();
 
       if (scrollAnimationFrameRef.current) {
         window.cancelAnimationFrame(scrollAnimationFrameRef.current);
@@ -72,6 +107,7 @@ export default function HowTo() {
 
   return (
     <section
+      ref={sectionRef}
       id="works"
       className="relative flex justify-center overflow-hidden pt-[clamp(206px,calc((446/1920)*100vw),446px)]"
     >
@@ -106,8 +142,7 @@ export default function HowTo() {
                 </strong>
                 <br />
                 아티스트가 가진 매력과 개성을 발견하고
-                <br />
-                그 사람만이 보여줄 수 있는 콘텐츠를 기획하고 제작합니다.
+                <br />그 사람만이 보여줄 수 있는 콘텐츠를 기획하고 제작합니다.
               </p>
             </div>
           </div>
