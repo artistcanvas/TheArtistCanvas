@@ -15,4 +15,163 @@ body {
   background: var(--background);
   color: white;
   font-family: var(--font-sans);
+  overflow-x: hidden;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+* {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+*::-webkit-scrollbar {
+  display: none;
+  width: 0;
+  height: 0;
+}
+
+@keyframes scroll-line-grow {
+  0% {
+    transform: scaleY(0);
+    opacity: 0;
+  }
+
+  20% {
+    opacity: 1;
+  }
+
+  100% {
+    transform: scaleY(1);
+    opacity: 1;
+  }
+}
+
+@keyframes hero-purple-drop-inflate {
+  0% {
+    transform: scale(0);
+    opacity: 0;
+  }
+
+  8% {
+    opacity: 1;
+  }
+
+  72% {
+    transform: scale(1.08);
+    opacity: 1;
+  }
+
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes hero-peach-drop-fill {
+  0% {
+    opacity: 0;
+    transform: scale(0.06);
+    filter: blur(8px) saturate(1.2);
+  }
+
+  8% {
+    opacity: 1;
+  }
+
+  72% {
+    opacity: 1;
+    transform: scale(1.12);
+    filter: blur(2px) saturate(1.08);
+  }
+
+  100% {
+    opacity: 1;
+    transform: scale(1.18);
+    filter: blur(0) saturate(1);
+  }
+}
+
+@keyframes hero-peach-drop-base {
+  0% {
+    opacity: 0;
+  }
+
+  72% {
+    opacity: 0;
+  }
+
+  100% {
+    opacity: 1;
+  }
+}
+
+.hero-purple-drop {
+  animation-name: hero-purple-drop-inflate;
+  animation-duration: 2.2s;
+  animation-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
+  animation-delay: 0s;
+  animation-iteration-count: 1;
+  animation-fill-mode: forwards;
+  transform-origin: left bottom;
+  will-change: transform, opacity;
+}
+
+.hero-peach-drop {
+  overflow: hidden;
+}
+
+.hero-peach-drop::before,
+.hero-peach-drop::after {
+  content: "";
+  position: absolute;
+}
+
+.hero-peach-drop::before {
+  z-index: 1;
+  inset: -46%;
+  background:
+    radial-gradient(
+      circle at 50% 50%,
+      #ff9d71 0%,
+      rgba(255, 157, 113, 0.96) 34%,
+      rgba(255, 157, 113, 0.68) 58%,
+      rgba(255, 157, 113, 0.26) 76%,
+      rgba(255, 157, 113, 0) 88%
+    );
+  animation-name: hero-peach-drop-fill;
+  animation-duration: 2.2s;
+  animation-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
+  animation-delay: 0s;
+  animation-iteration-count: 1;
+  animation-fill-mode: forwards;
+  transform-origin: center;
+  will-change: transform, opacity, filter;
+}
+
+.hero-peach-drop::after {
+  z-index: 0;
+  inset: 0;
+  background: #ff9d71;
+  animation-name: hero-peach-drop-base;
+  animation-duration: 2.2s;
+  animation-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
+  animation-delay: 0s;
+  animation-iteration-count: 1;
+  animation-fill-mode: forwards;
+  opacity: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .scroll-line-grow,
+  .hero-purple-drop,
+  .hero-peach-drop,
+  .hero-peach-drop::before,
+  .hero-peach-drop::after {
+    animation: none;
+  }
+
+  .hero-peach-drop::after {
+    opacity: 1;
+  }
 }
