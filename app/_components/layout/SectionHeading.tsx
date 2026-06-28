@@ -16,9 +16,9 @@ export default function SectionHeading({
         alt=""
         aria-hidden="true"
         priority
-        className="pointer-events-none absolute left-[30%] top-1/2 z-0 h-auto w-max -translate-x-1/2 -translate-y-1/2 select-none md:w-[clamp(520px,calc((690/1920)*100vw),690px)]"
+        className="pointer-events-none absolute left-[30%] md:left-[15%] top-[15%] md:top-[30%] z-0 h-auto w-[400px] -translate-x-1/2 -translate-y-1/2 select-none md:w-[clamp(400px,calc((600/1920)*100vw),600px)]"
       />
-      <h1 className="relative z-10 text-[clamp(65px,calc((136/1920)*100vw),136px)] font-black pb-[42px] md:pb-0">
+      <h1 className="leading-none relative z-10 text-[clamp(65px,calc((136/1920)*100vw),136px)] font-black pb-[42px] md:pb-0">
         {title}
       </h1>
       <p className="relative z-10 font-medium md:font-semibold md:text-end text-[clamp(12px,calc((14/1920)*100vw),14px)] text-[#5B5A62]">
