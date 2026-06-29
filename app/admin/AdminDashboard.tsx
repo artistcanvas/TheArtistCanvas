@@ -3,6 +3,7 @@
 import { Mail, Palette, Video } from "lucide-react";
 import { useState } from "react";
 import AdminArtistsForm from "./AdminArtistsForm";
+import AdminContactForm from "./AdminContactForm";
 import AdminWorksForm from "./AdminWorksForm";
 
 type AdminTab = "works" | "artist" | "contact";
@@ -64,18 +65,7 @@ export default function AdminDashboard() {
 
       {activeTab === "works" ? <AdminWorksForm /> : null}
       {activeTab === "artist" ? <AdminArtistsForm /> : null}
-      {activeTab === "contact" ? (
-        <section className="rounded-[8px] border border-[#222226] bg-[#101012] p-8">
-          <p className="text-[12px] font-semibold uppercase tracking-[2px] text-[#8D4CFF]">
-            Contact
-          </p>
-          <h2 className="mt-2 text-[26px] font-bold">Contact 관리</h2>
-          <p className="mt-3 max-w-[560px] text-[14px] leading-[1.7] text-[#9A99A2]">
-            아직 Contact 데이터 모델은 연결되어 있지 않습니다. 문의 항목이나 노출
-            문구를 Supabase로 관리할 때 이 탭에 폼을 붙이면 됩니다.
-          </p>
-        </section>
-      ) : null}
+      {activeTab === "contact" ? <AdminContactForm /> : null}
     </div>
   );
 }
