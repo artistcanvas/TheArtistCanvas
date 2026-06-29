@@ -143,6 +143,8 @@ const worksByTab: Record<WorkTab, Work[]> = {
 
 const tabs = Object.keys(worksByTab) as WorkTab[];
 
+const pplPartners = Array.from({ length: 20 }, (_, index) => index + 1);
+
 export default function Works() {
   const [activeTab, setActiveTab] = useState<WorkTab>("Original");
   const [activeCategory, setActiveCategory] = useState("파란형");
@@ -245,6 +247,39 @@ export default function Works() {
             />
           ))}
         </div>
+
+        {activeTab === "Brand & ppl" ? (
+          <section className="mt-[48px] md:mt-[72px]" aria-label="PPL partners">
+            <div className="flex items-center justify-between border-b border-[#181819] pb-[21px]">
+              <h3 className="text-[14px] font-semibold uppercase leading-none tracking-[0.4px] text-white md:text-[clamp(14px,calc((16/1920)*100vw),16px)]">
+                PPL
+              </h3>
+              <p className="text-[12px] font-semibold uppercase leading-none tracking-[3.2px] text-[#3A393F] md:text-[clamp(12px,calc((14/1920)*100vw),14px)]">
+                20 PARTNER
+              </p>
+            </div>
+
+            <div className="relative mt-[34px] overflow-hidden">
+              <div
+                aria-hidden="true"
+                className="pointer-events-none absolute inset-y-0 left-0 z-10 w-[54px] bg-[linear-gradient(90deg,#060607_0%,rgba(6,6,7,0)_100%)] md:w-[84px]"
+              />
+              <div
+                aria-hidden="true"
+                className="pointer-events-none absolute inset-y-0 right-0 z-10 w-[54px] bg-[linear-gradient(270deg,#060607_0%,rgba(6,6,7,0)_100%)] md:w-[84px]"
+              />
+
+              <div className="ppl-carousel-track flex w-max gap-[12px] md:gap-[19px]">
+                {[...pplPartners, ...pplPartners].map((partner, index) => (
+                  <div
+                    key={`${partner}-${index}`}
+                    className="h-[48px] w-[118px] shrink-0 rounded-[8px] bg-[linear-gradient(105deg,#0A0A0B_0%,#151517_42%,#1A1A1D_100%)] md:h-[82px] md:w-[158px] lg:w-[174px]"
+                  />
+                ))}
+              </div>
+            </div>
+          </section>
+        ) : null}
       </div>
     </div>
   );

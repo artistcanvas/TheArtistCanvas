@@ -106,6 +106,16 @@ body {
   }
 }
 
+@keyframes ppl-carousel-scroll {
+  from {
+    transform: translate3d(0, 0, 0);
+  }
+
+  to {
+    transform: translate3d(-50%, 0, 0);
+  }
+}
+
 .hero-purple-drop {
   opacity: 0;
   transform: scale(0);
@@ -164,6 +174,15 @@ body {
   opacity: 0;
 }
 
+.ppl-carousel-track {
+  animation: ppl-carousel-scroll 56s linear infinite;
+  will-change: transform;
+}
+
+.ppl-carousel-track:hover {
+  animation-play-state: paused;
+}
+
 .hero-drops-ready .hero-purple-drop {
   animation-name: hero-purple-drop-inflate;
 }
@@ -182,6 +201,10 @@ body {
   .hero-peach-drop,
   .hero-peach-drop::before,
   .hero-peach-drop::after {
+    animation: none;
+  }
+
+  .ppl-carousel-track {
     animation: none;
   }
 
