@@ -1,161 +1,63 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import SectionHeading from "../layout/SectionHeading";
 import WorkCard from "./WorkCard";
+import type { WorksData, WorkTab } from "./workTypes";
+import { workTabs } from "./workTypes";
 
-type WorkTab = "Original" | "Brand & ppl" | "Project";
-
-type Category = {
-  label: string;
-  color: string;
-};
-
-export type Work = {
-  title: string;
-  type: string;
-  year: string;
-  category: string;
-  isFeatured?: boolean;
-};
-
-const categoriesByTab: Record<WorkTab, Category[]> = {
-  Original: [
-    { label: "파란형", color: "#FF9D71" },
-    { label: "자연형", color: "#8D4CFF" },
-    { label: "차분형", color: "#8D4CFF" },
-    { label: "재기형", color: "#FF9D71" },
-  ],
-  "Brand & ppl": [
-    { label: "브랜드", color: "#FF9D71" },
-    { label: "피플", color: "#8D4CFF" },
-    { label: "캠페인", color: "#8D4CFF" },
-  ],
-  Project: [
-    { label: "필름", color: "#FF9D71" },
-    { label: "콘텐츠", color: "#8D4CFF" },
-    { label: "콜라보", color: "#8D4CFF" },
-  ],
-};
-
-const worksByTab: Record<WorkTab, Work[]> = {
-  Original: [
-    {
-      title: "영상 제목",
-      type: "MAKING FILM",
-      year: "2024",
-      category: "파란형",
-    },
-    {
-      title: "영상 제목",
-      type: "MAKING FILM",
-      year: "2024",
-      category: "자연형",
-    },
-    {
-      title: "영상 제목",
-      type: "MAKING FILM",
-      year: "2024",
-      category: "차분형",
-      isFeatured: true,
-    },
-    {
-      title: "영상 제목",
-      type: "MAKING FILM",
-      year: "2024",
-      category: "재기형",
-    },
-    {
-      title: "영상 제목",
-      type: "BRAND FILM",
-      year: "2024",
-      category: "파란형",
-    },
-    {
-      title: "영상 제목",
-      type: "MAKING FILM",
-      year: "2024",
-      category: "자연형",
-    },
-    {
-      title: "영상 제목",
-      type: "MAKING FILM",
-      year: "2024",
-      category: "차분형",
-    },
-    {
-      title: "영상 제목",
-      type: "MAKING FILM",
-      year: "2024",
-      category: "재기형",
-    },
-  ],
-  "Brand & ppl": [
-    {
-      title: "브랜드 제목",
-      type: "BRAND FILM",
-      year: "2024",
-      category: "브랜드",
-    },
-    { title: "피플 제목", type: "PEOPLE FILM", year: "2024", category: "피플" },
-    {
-      title: "캠페인 제목",
-      type: "CAMPAIGN",
-      year: "2024",
-      category: "캠페인",
-    },
-    {
-      title: "브랜드 제목",
-      type: "BRAND FILM",
-      year: "2024",
-      category: "브랜드",
-      isFeatured: true,
-    },
-  ],
-  Project: [
-    {
-      title: "프로젝트 제목",
-      type: "PROJECT FILM",
-      year: "2024",
-      category: "필름",
-    },
-    {
-      title: "콘텐츠 제목",
-      type: "ORIGINAL CONTENTS",
-      year: "2024",
-      category: "콘텐츠",
-    },
-    {
-      title: "콜라보 제목",
-      type: "COLLABORATION",
-      year: "2024",
-      category: "콜라보",
-    },
-    {
-      title: "프로젝트 제목",
-      type: "PROJECT FILM",
-      year: "2024",
-      category: "필름",
-      isFeatured: true,
-    },
-  ],
-};
-
-const tabs = Object.keys(worksByTab) as WorkTab[];
-
-const pplPartners = Array.from({ length: 20 }, (_, index) => index + 1);
-
-export default function Works() {
+export default function Works({ worksData }: { worksData: WorksData }) {
   const [activeTab, setActiveTab] = useState<WorkTab>("Original");
-  const [activeCategory, setActiveCategory] = useState("파란형");
+  const [activeCategoryId, setActiveCategoryId] = useState(
+    worksData.Original.categories[0]?.id ?? ""
+  );
+  const [hasPplOverflow, setHasPplOverflow] = useState(false);
+  const [isPplPaused, setIsPplPaused] = useState(false);
+  const pplScrollerRef = useRef<HTMLDivElement>(null);
+  const pplGroupRef = useRef<HTMLDivElement>(null);
 
-  const categories = categoriesByTab[activeTab];
-  const works = useMemo(() => worksByTab[activeTab], [activeTab]);
+  const categories = worksData[activeTab].categories;
+  const works = worksData[activeTab].works;
+
+  const filteredWorks = useMemo(() => {
+    if (!activeCategoryId) {
+      return works;
+    }
+
+    return works.filter((work) => work.categoryId === activeCategoryId);
+  }, [activeCategoryId, works]);
 
   const handleTabChange = (tab: WorkTab) => {
     setActiveTab(tab);
-    setActiveCategory(categoriesByTab[tab][0].label);
+    setActiveCategoryId(worksData[tab].categories[0]?.id ?? "");
   };
+
+  useEffect(() => {
+    const scroller = pplScrollerRef.current;
+    const group = pplGroupRef.current;
+
+    if (!scroller || !group || activeTab !== "Brand & ppl") {
+      setHasPplOverflow(false);
+      return;
+    }
+
+    const updateOverflow = () => {
+      setHasPplOverflow(group.scrollWidth > scroller.clientWidth + 1);
+    };
+
+    const animationFrame = requestAnimationFrame(updateOverflow);
+
+    const resizeObserver = new ResizeObserver(updateOverflow);
+    resizeObserver.observe(scroller);
+    resizeObserver.observe(group);
+    window.addEventListener("resize", updateOverflow);
+
+    return () => {
+      cancelAnimationFrame(animationFrame);
+      resizeObserver.disconnect();
+      window.removeEventListener("resize", updateOverflow);
+    };
+  }, [activeTab, worksData.pplPartners.length]);
 
   return (
     <div className="mx-auto w-full max-w-[1920px] px-5 md:px-[clamp(20px,calc((170/1920)*100vw),170px)]">
@@ -174,10 +76,10 @@ export default function Works() {
         <div className="flex items-center justify-between border-b border-[#181819]">
           <div
             role="tablist"
-            aria-label="Works categories"
+            aria-label="Works tabs"
             className="flex gap-[clamp(29px,calc((50/1920)*100vw),50px)] overflow-x-auto md:gap-[46px]"
           >
-            {tabs.map((tab) => {
+            {workTabs.map((tab) => {
               const isActive = tab === activeTab;
 
               return (
@@ -187,7 +89,7 @@ export default function Works() {
                   role="tab"
                   aria-selected={isActive}
                   onClick={() => handleTabChange(tab)}
-                  className={`relative pb-[19px] shrink-0 text-[14px] font-medium tracking-[1.3px] uppercase transition-colors ${
+                  className={`relative shrink-0 pb-[19px] text-[14px] font-medium uppercase tracking-[1.3px] transition-colors ${
                     isActive
                       ? "text-white"
                       : "text-[#4B4A52] hover:text-[#9A99A2]"
@@ -202,21 +104,21 @@ export default function Works() {
             })}
           </div>
 
-          <p className="hidden text-[clamp(12px,calc((14/1920)*100w),14px)] tracking-[2.42px] font-semibold text-[#3A393F] md:block">
+          <p className="hidden text-[clamp(12px,calc((14/1920)*100vw),14px)] font-semibold tracking-[2.42px] text-[#3A393F] md:block">
             {works.length} WORKS
           </p>
         </div>
 
         <div className="mt-[20px] flex gap-[7px] overflow-x-auto md:mt-[25px] md:gap-[8px]">
           {categories.map((category) => {
-            const isActive = category.label === activeCategory;
+            const isActive = category.id === activeCategoryId;
 
             return (
               <button
-                key={category.label}
+                key={category.id}
                 type="button"
-                onClick={() => setActiveCategory(category.label)}
-                className={`flex h-[32px] md:h-[clamp(24px,calc((35/1920)*100vw),35px)] shrink-0 items-center gap-[8px] rounded-full border md:border-l-0 pr-[clamp(10px,calc((13/1920)*100vw),13px)] pl-[4px] md:pl-0 text-[clamp(12px,calc((16/1920)*100vw),16px)] font-medium transition-colors ${
+                onClick={() => setActiveCategoryId(category.id)}
+                className={`flex h-[32px] shrink-0 items-center gap-[8px] rounded-full border pr-[clamp(10px,calc((13/1920)*100vw),13px)] pl-[4px] text-[clamp(12px,calc((16/1920)*100vw),16px)] font-medium transition-colors md:h-[clamp(24px,calc((35/1920)*100vw),35px)] md:border-l-0 md:pl-0 ${
                   isActive
                     ? "border-[#7F7F7F] bg-[#333333] text-white"
                     : "border-[#333333] text-[#7F7F7F] hover:border-[#8D8B91] hover:text-[#8D8B91]"
@@ -224,27 +126,34 @@ export default function Works() {
               >
                 <span
                   aria-hidden="true"
-                  className={`size-[clamp(24px,calc((35/1920)*100vw),35px)] rounded-full border
-                    ${isActive ? "border-[#7F7F7F]" : "border-[#333333]"}
-                    `}
-                  style={{ backgroundColor: category.color }}
-                />
+                  className={`relative size-[clamp(24px,calc((35/1920)*100vw),35px)] overflow-hidden rounded-full border ${
+                    isActive ? "border-[#7F7F7F]" : "border-[#333333]"
+                  }`}
+                  style={{ backgroundColor: category.color ?? "#333333" }}
+                >
+                  {category.profileImageUrl ? (
+                    <span
+                      aria-hidden="true"
+                      className="block size-full bg-cover bg-center"
+                      style={{
+                        backgroundImage: `url(${category.profileImageUrl})`,
+                      }}
+                    />
+                  ) : null}
+                </span>
                 {category.label}
               </button>
             );
           })}
         </div>
 
-        <p className="mt-[22px] text-right text-[clamp(12px,calc((14/1920)*100w),14px)] font-semibold text-[#3A393F] md:hidden">
+        <p className="mt-[22px] text-right text-[clamp(12px,calc((14/1920)*100vw),14px)] font-semibold text-[#3A393F] md:hidden">
           {works.length} WORKS
         </p>
 
-        <div className="mt-[9px] grid grid-cols-1 gap-[10px] md:grid-cols-2 md:mt-[26px] md:gap-x-[36px] md:gap-y-[30px] xl:grid-cols-4">
-          {works.map((work, index) => (
-            <WorkCard
-              key={`${work.title}-${work.category}-${index}`}
-              work={work}
-            />
+        <div className="mt-[9px] grid grid-cols-1 gap-[10px] md:mt-[26px] md:grid-cols-2 md:gap-x-[36px] md:gap-y-[30px] xl:grid-cols-4">
+          {filteredWorks.map((work) => (
+            <WorkCard key={work.id} work={work} />
           ))}
         </div>
 
@@ -255,27 +164,88 @@ export default function Works() {
                 PPL
               </h3>
               <p className="text-[12px] font-semibold uppercase leading-none tracking-[3.2px] text-[#3A393F] md:text-[clamp(12px,calc((14/1920)*100vw),14px)]">
-                20 PARTNER
+                {worksData.pplPartners.length} PARTNER
               </p>
             </div>
 
-            <div className="relative mt-[34px] overflow-hidden">
+            <div
+              ref={pplScrollerRef}
+              onMouseEnter={() => setIsPplPaused(true)}
+              onMouseLeave={() => setIsPplPaused(false)}
+              onFocus={() => setIsPplPaused(true)}
+              onBlur={() => setIsPplPaused(false)}
+              className="relative mt-[34px] overflow-hidden"
+            >
               <div
-                aria-hidden="true"
-                className="pointer-events-none absolute inset-y-0 left-0 z-10 w-[54px] bg-[linear-gradient(90deg,#060607_0%,rgba(6,6,7,0)_100%)] md:w-[84px]"
-              />
-              <div
-                aria-hidden="true"
-                className="pointer-events-none absolute inset-y-0 right-0 z-10 w-[54px] bg-[linear-gradient(270deg,#060607_0%,rgba(6,6,7,0)_100%)] md:w-[84px]"
-              />
+                className={`flex w-max ${
+                  hasPplOverflow ? "ppl-carousel-track" : ""
+                }`}
+                style={{
+                  animationPlayState: isPplPaused ? "paused" : "running",
+                }}
+              >
+                <div
+                  ref={pplGroupRef}
+                  className="flex w-max shrink-0 gap-[12px] pr-[12px] md:gap-[19px] md:pr-[19px]"
+                >
+                  {worksData.pplPartners.map((partner) => (
+                    <a
+                      key={partner.id}
+                      href={partner.websiteUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      aria-label={partner.name}
+                      className="flex h-[48px] w-[118px] shrink-0 items-center justify-center rounded-[8px] bg-[#101012] px-4 transition hover:bg-[#17171A] md:h-[82px] md:w-[158px] lg:w-[174px]"
+                    >
+                      {partner.logoUrl ? (
+                        <span
+                          aria-hidden="true"
+                          className="block h-[60%] w-full bg-contain bg-center bg-no-repeat"
+                          style={{
+                            backgroundImage: `url(${partner.logoUrl})`,
+                          }}
+                        />
+                      ) : (
+                        <span className="truncate text-[12px] font-bold text-[#A7A6AE]">
+                          {partner.name}
+                        </span>
+                      )}
+                    </a>
+                  ))}
+                </div>
 
-              <div className="ppl-carousel-track flex w-max gap-[12px] md:gap-[19px]">
-                {[...pplPartners, ...pplPartners].map((partner, index) => (
+                {hasPplOverflow ? (
                   <div
-                    key={`${partner}-${index}`}
-                    className="h-[48px] w-[118px] shrink-0 rounded-[8px] bg-[linear-gradient(105deg,#0A0A0B_0%,#151517_42%,#1A1A1D_100%)] md:h-[82px] md:w-[158px] lg:w-[174px]"
-                  />
-                ))}
+                    aria-hidden="true"
+                    className="flex w-max shrink-0 gap-[12px] pr-[12px] md:gap-[19px] md:pr-[19px]"
+                  >
+                    {worksData.pplPartners.map((partner) => (
+                  <a
+                    key={`${partner.id}-duplicate`}
+                    href={partner.websiteUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    aria-label={partner.name}
+                    tabIndex={-1}
+                    className="pointer-events-none flex h-[48px] w-[118px] shrink-0 items-center justify-center rounded-[8px] bg-[#101012] px-4 md:h-[82px] md:w-[158px] lg:w-[174px]"
+                  >
+                    {partner.logoUrl ? (
+                      <span
+                        aria-hidden="true"
+                        className="block h-[60%] w-full bg-contain bg-center bg-no-repeat"
+                        style={{
+                          backgroundImage: `url(${partner.logoUrl})`,
+                        }}
+                      />
+                    ) : (
+                      <span className="truncate text-[12px] font-bold text-[#A7A6AE]">
+                        {partner.name}
+                      </span>
+                    )}
+                  </a>
+                    ))}
+                  </div>
+                ) : null}
               </div>
             </div>
           </section>
