@@ -1,7 +1,10 @@
 "use client";
 
-import { motion, useScroll, useTransform } from "framer-motion";
-import { useRef } from "react";
+import { animate, motion, useMotionValue, useTransform } from "framer-motion";
+import { useEffect, useRef } from "react";
+import { HOW_TO_QUOTE_PLAY_EVENT } from "./landingScrollEvents";
+
+const QUOTE_REVEAL_DURATION = 1.25;
 
 const getRevealGradient = (value: number) => {
   if (value <= 0) {
@@ -22,14 +25,32 @@ const getRevealGradient = (value: number) => {
 
 export default function AnimatedQuote() {
   const ref = useRef<HTMLDivElement>(null);
+  const hasPlayedRef = useRef(false);
+  const revealProgress = useMotionValue(0);
 
-  const { scrollYProgress } = useScroll({
-    target: ref,
-    offset: ["start 100%", "end 35%"],
-  });
+  useEffect(() => {
+    const playReveal = () => {
+      if (hasPlayedRef.current) return;
 
-  const firstProgress = useTransform(scrollYProgress, [0, 0.5], [0, 1]);
-  const secondProgress = useTransform(scrollYProgress, [0.5, 1], [0, 1]);
+      hasPlayedRef.current = true;
+
+      animate(revealProgress, 1, {
+        duration: window.matchMedia("(prefers-reduced-motion: reduce)").matches
+          ? 0
+          : QUOTE_REVEAL_DURATION,
+        ease: [0.22, 1, 0.36, 1],
+      });
+    };
+
+    window.addEventListener(HOW_TO_QUOTE_PLAY_EVENT, playReveal);
+
+    return () => {
+      window.removeEventListener(HOW_TO_QUOTE_PLAY_EVENT, playReveal);
+    };
+  }, [revealProgress]);
+
+  const firstProgress = useTransform(revealProgress, [0, 0.52], [0, 1]);
+  const secondProgress = useTransform(revealProgress, [0.48, 1], [0, 1]);
 
   const firstGradient = useTransform(firstProgress, getRevealGradient);
   const secondGradient = useTransform(secondProgress, getRevealGradient);

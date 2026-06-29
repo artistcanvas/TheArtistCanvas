@@ -53,7 +53,7 @@ export default function Artist() {
   const artistCountLabel = `${artists.length} ${activeTab}S`;
 
   return (
-    <div className="w-full max-w-[1920px] px-5 md:px-[clamp(20px,calc((170/1920)*100vw),170px)]">
+    <div className="mx-auto w-full max-w-[1920px] px-5 md:px-[clamp(20px,calc((170/1920)*100vw),170px)]">
       <SectionHeading
         title="ARTIST"
         des={
