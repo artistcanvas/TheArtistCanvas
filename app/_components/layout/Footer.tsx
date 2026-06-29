@@ -1,3 +1,7 @@
+"use client";
+
+import { usePathname } from "next/navigation";
+
 const footerLinks = [
   { name: "콘텐츠 제작", href: "/contact" },
   { name: "광고 · PPL", href: "/contact" },
@@ -5,8 +9,13 @@ const footerLinks = [
 ];
 
 export const Footer = () => {
+  const pathname = usePathname();
+  const footerMarginTop = pathname === "/contact" ? "mt-0" : "mt-[200px]";
+
   return (
-    <footer className="mt-[200px] flex w-full flex-col gap-[48px] border-t border-white/10 px-5 py-10 md:flex-row md:justify-between md:gap-8 md:px-[clamp(20px,calc((170/1920)*100vw),170px)] md:py-[50px]">
+    <footer
+      className={`${footerMarginTop} flex w-full flex-col gap-[48px] border-t border-white/10 px-5 py-10 md:flex-row md:justify-between md:gap-8 md:px-[clamp(20px,calc((170/1920)*100vw),170px)] md:py-[50px]`}
+    >
       <div className="flex min-w-0 flex-col gap-[70px]">
         <p className="text-[14px] text-[#9A99A2]">
           음악과 아티스트를 기록하는 콘텐츠 스튜디오
