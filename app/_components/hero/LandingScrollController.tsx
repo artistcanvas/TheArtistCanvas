@@ -2,17 +2,20 @@
 
 import { PropsWithChildren, useEffect, useRef } from "react";
 import { HOW_TO_QUOTE_PLAY_EVENT } from "./landingScrollEvents";
+import { animateWindowScroll } from "./scrollAnimation";
 
 const HOW_TO_ID = "how-to";
 const HOW_TO_CARD_CONTAINER_ID = "how-to-card-container";
 const SNAP_TOLERANCE = 24;
 const TOUCH_DELTA_THRESHOLD = 12;
+const SNAP_SCROLL_DURATION = 700;
 
 export default function LandingScrollController({
   children,
 }: PropsWithChildren) {
   const isSnappingRef = useRef(false);
   const touchStartYRef = useRef<number | null>(null);
+  const cancelScrollAnimationRef = useRef<(() => void) | null>(null);
 
   useEffect(() => {
     const getTargetTop = (id: string) => {
@@ -30,20 +33,27 @@ export default function LandingScrollController({
     const snapTo = (id: string, top: number) => {
       isSnappingRef.current = true;
 
-      window.scrollTo({
+      if (cancelScrollAnimationRef.current) {
+        cancelScrollAnimationRef.current();
+      }
+
+      const duration = window.matchMedia("(prefers-reduced-motion: reduce)")
+        .matches
+        ? 0
+        : SNAP_SCROLL_DURATION;
+
+      cancelScrollAnimationRef.current = animateWindowScroll({
         top,
-        behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches
-          ? "auto"
-          : "smooth",
+        duration,
+        onComplete: () => {
+          if (id === HOW_TO_ID) {
+            playHowToQuote();
+          }
+
+          isSnappingRef.current = false;
+          cancelScrollAnimationRef.current = null;
+        },
       });
-
-      window.setTimeout(() => {
-        if (id === HOW_TO_ID) {
-          playHowToQuote();
-        }
-
-        isSnappingRef.current = false;
-      }, 400);
     };
 
     const maybeSnapDown = () => {
@@ -106,6 +116,10 @@ export default function LandingScrollController({
       window.removeEventListener("wheel", handleWheel);
       window.removeEventListener("touchstart", handleTouchStart);
       window.removeEventListener("touchmove", handleTouchMove);
+
+      if (cancelScrollAnimationRef.current) {
+        cancelScrollAnimationRef.current();
+      }
     };
   }, []);
 
