@@ -11,6 +11,9 @@ export const Footer = () => {
         <p className="text-[14px] text-[#9A99A2]">
           음악과 아티스트를 기록하는 콘텐츠 스튜디오
         </p>
+        <p className="hidden text-[12px] text-[#5B5A62] md:block">
+          © 2026 The Artist Canvas
+        </p>
       </div>
       <div className="flex min-w-0 flex-col items-start gap-[40px] md:items-end md:gap-[61px]">
         <div className="flex min-w-0 flex-col gap-[24px] md:flex-row md:gap-[60px]">
@@ -25,7 +28,6 @@ export const Footer = () => {
             ))}
           </ul>
         </div>
-        <p className="text-[12px] text-[#5B5A62]">© 2026 The Artist Canvas</p>
         <div className="flex gap-[10px]">
           <div className="rounded-full border flex justify-center items-center border-white/10 w-[34px] h-[34px]">
             <svg
@@ -73,6 +75,9 @@ export const Footer = () => {
             </svg>
           </div>
         </div>
+        <p className="text-[12px] text-[#5B5A62] md:hidden">
+          © 2026 The Artist Canvas
+        </p>
       </div>
     </footer>
   );

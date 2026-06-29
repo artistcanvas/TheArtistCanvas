@@ -1,78 +1,19 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useRef } from "react";
 import HowToCard from "./HowToCard";
 import ProgressLine from "./ProgressLine";
-
-const LINE_DRAW_DURATION = 1000;
-const MD_BREAKPOINT = 768;
+import useProgressLineFollow from "./useProgressLineFollow";
 
 export default function HowToCardContainer() {
   const sectionRef = useRef<HTMLElement>(null);
   const lineTrackRef = useRef<HTMLDivElement>(null);
-  const hasStartedRef = useRef(false);
-  const scrollAnimationFrameRef = useRef<number | null>(null);
-  const [isLineActive, setIsLineActive] = useState(false);
-  const [isLineComplete, setIsLineComplete] = useState(false);
-
-  useEffect(() => {
-    if (!sectionRef.current || !lineTrackRef.current) return;
-
-    const lineObserver = new IntersectionObserver(
-      ([entry]) => {
-        if (!entry.isIntersecting || hasStartedRef.current) return;
-
-        hasStartedRef.current = true;
-        setIsLineActive(true);
-
-        const prefersReducedMotion = window.matchMedia(
-          "(prefers-reduced-motion: reduce)",
-        ).matches;
-        const shouldAutoScroll =
-          !prefersReducedMotion &&
-          window.matchMedia(`(min-width: ${MD_BREAKPOINT}px)`).matches;
-
-        if (!shouldAutoScroll) return;
-
-        const startY = window.scrollY;
-        const lineTrackTop =
-          lineTrackRef.current!.getBoundingClientRect().top + window.scrollY;
-        const lineTrackHeight = lineTrackRef.current!.offsetHeight + 20;
-        const followPoint = window.innerHeight - 10;
-        const startTime = performance.now();
-
-        const animateScroll = (time: number) => {
-          const elapsed = Math.min((time - startTime) / LINE_DRAW_DURATION, 1);
-          const currentLineEnd = lineTrackTop + lineTrackHeight * elapsed;
-          const nextY = Math.max(startY, currentLineEnd - followPoint);
-
-          window.scrollTo(0, nextY);
-
-          if (elapsed < 1) {
-            scrollAnimationFrameRef.current =
-              window.requestAnimationFrame(animateScroll);
-          }
-        };
-
-        scrollAnimationFrameRef.current =
-          window.requestAnimationFrame(animateScroll);
-      },
-      {
-        rootMargin: "0px 0px -10px 0px",
-        threshold: 0.01,
-      },
-    );
-
-    lineObserver.observe(lineTrackRef.current);
-
-    return () => {
-      lineObserver.disconnect();
-
-      if (scrollAnimationFrameRef.current) {
-        window.cancelAnimationFrame(scrollAnimationFrameRef.current);
-      }
-    };
-  }, []);
+  const {
+    durationSeconds,
+    isLineActive,
+    isLineComplete,
+    setIsLineComplete,
+  } = useProgressLineFollow({ lineTrackRef });
 
   return (
     <section
@@ -88,7 +29,7 @@ export default function HowToCardContainer() {
           >
             <ProgressLine
               isActive={isLineActive}
-              duration={LINE_DRAW_DURATION / 1000}
+              duration={durationSeconds}
               onComplete={() => setIsLineComplete(true)}
             />
 

@@ -26,6 +26,20 @@ export default function LandingScrollController({
       return target.getBoundingClientRect().top + window.scrollY;
     };
 
+    const getTargetBounds = (id: string) => {
+      const target = document.getElementById(id);
+
+      if (!target) return null;
+
+      const rect = target.getBoundingClientRect();
+      const top = rect.top + window.scrollY;
+
+      return {
+        top,
+        bottom: top + rect.height,
+      };
+    };
+
     const playHowToQuote = () => {
       window.dispatchEvent(new Event(HOW_TO_QUOTE_PLAY_EVENT));
     };
@@ -82,8 +96,37 @@ export default function LandingScrollController({
       return false;
     };
 
+    const maybeSnapUp = () => {
+      if (isSnappingRef.current) return false;
+
+      const howToTop = getTargetTop(HOW_TO_ID);
+      const cardContainerBounds = getTargetBounds(HOW_TO_CARD_CONTAINER_ID);
+
+      if (howToTop === null || cardContainerBounds === null) return false;
+
+      const scrollY = window.scrollY;
+      const isInCardContainer =
+        scrollY >= cardContainerBounds.top - SNAP_TOLERANCE &&
+        scrollY <= cardContainerBounds.bottom - SNAP_TOLERANCE;
+
+      if (scrollY > howToTop + SNAP_TOLERANCE && isInCardContainer) {
+        snapTo(HOW_TO_ID, howToTop);
+        return true;
+      }
+
+      return false;
+    };
+
     const handleWheel = (event: WheelEvent) => {
-      if (event.deltaY <= 0) return;
+      if (event.deltaY < 0) {
+        if (maybeSnapUp()) {
+          event.preventDefault();
+        }
+
+        return;
+      }
+
+      if (event.deltaY === 0) return;
 
       if (maybeSnapDown()) {
         event.preventDefault();
@@ -101,6 +144,12 @@ export default function LandingScrollController({
       if (currentY === undefined) return;
 
       const deltaY = touchStartYRef.current - currentY;
+
+      if (deltaY < -TOUCH_DELTA_THRESHOLD && maybeSnapUp()) {
+        event.preventDefault();
+        touchStartYRef.current = null;
+        return;
+      }
 
       if (deltaY > TOUCH_DELTA_THRESHOLD && maybeSnapDown()) {
         event.preventDefault();
