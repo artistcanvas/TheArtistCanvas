@@ -1,12 +1,13 @@
 "use client";
 
-import { Mail, Palette, Video } from "lucide-react";
+import { Home, Mail, Palette, Video } from "lucide-react";
 import { useState } from "react";
 import AdminArtistsForm from "./AdminArtistsForm";
 import AdminContactForm from "./AdminContactForm";
+import AdminHeroCardsForm from "./AdminHeroCardsForm";
 import AdminWorksForm from "./AdminWorksForm";
 
-type AdminTab = "works" | "artist" | "contact";
+type AdminTab = "works" | "hero" | "artist" | "contact";
 
 const tabs: Array<{
   id: AdminTab;
@@ -14,6 +15,7 @@ const tabs: Array<{
   icon: typeof Video;
 }> = [
   { id: "works", label: "Works", icon: Video },
+  { id: "hero", label: "Hero", icon: Home },
   { id: "artist", label: "Artist", icon: Palette },
   { id: "contact", label: "Contact", icon: Mail },
 ];
@@ -36,7 +38,7 @@ export default function AdminDashboard() {
         <div
           role="tablist"
           aria-label="Admin sections"
-          className="grid grid-cols-3 gap-2 rounded-[8px] border border-[#222226] bg-[#0C0C0E] p-1 md:w-[420px]"
+          className="grid grid-cols-4 gap-2 rounded-[8px] border border-[#222226] bg-[#0C0C0E] p-1 md:w-[520px]"
         >
           {tabs.map((tab) => {
             const Icon = tab.icon;
@@ -64,6 +66,7 @@ export default function AdminDashboard() {
       </header>
 
       {activeTab === "works" ? <AdminWorksForm /> : null}
+      {activeTab === "hero" ? <AdminHeroCardsForm /> : null}
       {activeTab === "artist" ? <AdminArtistsForm /> : null}
       {activeTab === "contact" ? <AdminContactForm /> : null}
     </div>

@@ -2,10 +2,15 @@
 
 import { useRef } from "react";
 import HowToCard from "./HowToCard";
+import type { HeroVideoCard } from "./heroVideoCardTypes";
 import ProgressLine from "./ProgressLine";
 import useProgressLineFollow from "./useProgressLineFollow";
 
-export default function HowToCardContainer() {
+type HowToCardContainerProps = {
+  cards: HeroVideoCard[];
+};
+
+export default function HowToCardContainer({ cards }: HowToCardContainerProps) {
   const sectionRef = useRef<HTMLElement>(null);
   const lineTrackRef = useRef<HTMLDivElement>(null);
   const {
@@ -49,7 +54,7 @@ export default function HowToCardContainer() {
             </div>
           </div>
 
-          <HowToCard shouldReveal={isLineComplete} />
+          <HowToCard cards={cards} shouldReveal={isLineComplete} />
         </div>
       </div>
     </section>
