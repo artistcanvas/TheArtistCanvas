@@ -9,7 +9,10 @@ export const Hero = () => {
   const [isLogoLoaded, setIsLogoLoaded] = useState(false);
 
   return (
-    <div className="pb-[56px] pt-[128px] md:pb-15 min-[1921px]:pb-[calc((56/1920)*100vw)] flex flex-col gap-11 items-center justify-end w-full h-svh min-h-max">
+    <div
+      id="hero"
+      className="pb-[56px] pt-[128px] md:pb-15 min-[1921px]:pb-[calc((56/1920)*100vw)] flex flex-col gap-11 items-center justify-end w-full h-svh min-h-max"
+    >
       <div className="flex flex-col items-end gap-[249px] w-full h-full max-w-[1920px] md:justify-between md:gap-10 px-5 md:flex-row md:pl-[90px] md:pr-[clamp(90px,calc((201/1920)*100vw),201px)] md:h-auto">
         <div className="relative mx-auto w-full shrink aspect-[922/356] md:mx-0 md:w-[min(100%,clamp(335px,calc((922/1920)*100vw),922px))]">
           <Image

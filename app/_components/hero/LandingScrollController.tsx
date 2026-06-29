@@ -4,6 +4,7 @@ import { PropsWithChildren, useEffect, useRef } from "react";
 import { HOW_TO_QUOTE_PLAY_EVENT } from "./landingScrollEvents";
 import { animateWindowScroll } from "./scrollAnimation";
 
+const HERO_ID = "hero";
 const HOW_TO_ID = "how-to";
 const HOW_TO_CARD_CONTAINER_ID = "how-to-card-container";
 const SNAP_TOLERANCE = 24;
@@ -99,15 +100,32 @@ export default function LandingScrollController({
     const maybeSnapUp = () => {
       if (isSnappingRef.current) return false;
 
+      const heroTop = getTargetTop(HERO_ID);
       const howToTop = getTargetTop(HOW_TO_ID);
+      const howToBounds = getTargetBounds(HOW_TO_ID);
       const cardContainerBounds = getTargetBounds(HOW_TO_CARD_CONTAINER_ID);
 
-      if (howToTop === null || cardContainerBounds === null) return false;
+      if (
+        heroTop === null ||
+        howToTop === null ||
+        howToBounds === null ||
+        cardContainerBounds === null
+      ) {
+        return false;
+      }
 
       const scrollY = window.scrollY;
+      const isInHowTo =
+        scrollY >= howToBounds.top - SNAP_TOLERANCE &&
+        scrollY <= howToBounds.bottom - SNAP_TOLERANCE;
       const isInCardContainer =
         scrollY >= cardContainerBounds.top - SNAP_TOLERANCE &&
         scrollY <= cardContainerBounds.bottom - SNAP_TOLERANCE;
+
+      if (scrollY > heroTop + SNAP_TOLERANCE && isInHowTo) {
+        snapTo(HERO_ID, heroTop);
+        return true;
+      }
 
       if (scrollY > howToTop + SNAP_TOLERANCE && isInCardContainer) {
         snapTo(HOW_TO_ID, howToTop);
