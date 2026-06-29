@@ -3,16 +3,15 @@
 import Logo from "@/public/imgs/nav-logo.png";
 import Image from "next/image";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { useState } from "react";
 
-const navLinks = [
-  { name: "WORKS", href: "/work" },
-  { name: "ARTIST", href: "/artist" },
-  { name: "CONTACT", href: "/contact" },
-];
+import { NavLink } from "./NavLink";
+import { isActiveNavPath, navLinks } from "./navLinks";
 
 export const Nav = () => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const pathname = usePathname();
 
   return (
     <nav className="fixed inset-x-0 top-0 z-40 border-b border-[#181819] bg-[#060607] md:mx-[20px]">
@@ -29,7 +28,11 @@ export const Nav = () => {
           <ul className="hidden gap-[43px] text-[16px] font-semibold text-[#5B5A62] md:flex">
             {navLinks.map((link) => (
               <li key={link.name}>
-                <Link href={link.href}>{link.name}</Link>
+                <NavLink
+                  link={link}
+                  isActive={isActiveNavPath(pathname, link.href)}
+                  variant="desktop"
+                />
               </li>
             ))}
           </ul>
@@ -64,13 +67,12 @@ export const Nav = () => {
         <ul className="min-h-0 px-[20px] text-right text-[22px] font-semibold text-white">
           {navLinks.map((link) => (
             <li key={link.name}>
-              <Link
-                href={link.href}
-                className="block py-3"
-                onClick={() => setIsMobileMenuOpen(false)}
-              >
-                {link.name}
-              </Link>
+              <NavLink
+                link={link}
+                isActive={isActiveNavPath(pathname, link.href)}
+                variant="mobile"
+                onNavigate={() => setIsMobileMenuOpen(false)}
+              />
             </li>
           ))}
         </ul>
