@@ -3,53 +3,32 @@
 import { useMemo, useState } from "react";
 import SectionHeading from "../layout/SectionHeading";
 import ArtistCard from "./ArtistCard";
+import { fallbackArtistsData } from "./artistFallbackData";
 
-type ArtistTab = "CREATOR" | "SINGER" | "ACTOR";
+export type ArtistTab = "CREATOR" | "SINGER" | "ACTOR";
 
 export type ArtistProfile = {
+  id?: string;
   name: string;
   role: ArtistTab;
+  profileImageUrl?: string | null;
+  birthDate?: string;
+  height?: string;
+  education?: string;
+  youtubeUrl?: string;
+  careers: string[];
   isFeatured?: boolean;
 };
 
-const artistsByTab: Record<ArtistTab, ArtistProfile[]> = {
-  CREATOR: [
-    { name: "크리에이터 이름", role: "CREATOR" },
-    { name: "크리에이터 이름", role: "CREATOR" },
-    { name: "크리에이터 이름", role: "CREATOR" },
-    { name: "크리에이터 이름", role: "CREATOR", isFeatured: true },
-    { name: "크리에이터 이름", role: "CREATOR" },
-    { name: "크리에이터 이름", role: "CREATOR" },
-    { name: "크리에이터 이름", role: "CREATOR" },
-    { name: "크리에이터 이름", role: "CREATOR" },
-  ],
-  SINGER: [
-    { name: "싱어 이름", role: "SINGER" },
-    { name: "싱어 이름", role: "SINGER" },
-    { name: "싱어 이름", role: "SINGER", isFeatured: true },
-    { name: "싱어 이름", role: "SINGER" },
-    { name: "싱어 이름", role: "SINGER" },
-    { name: "싱어 이름", role: "SINGER" },
-    { name: "싱어 이름", role: "SINGER" },
-    { name: "싱어 이름", role: "SINGER" },
-  ],
-  ACTOR: [
-    { name: "배우 이름", role: "ACTOR" },
-    { name: "배우 이름", role: "ACTOR" },
-    { name: "배우 이름", role: "ACTOR" },
-    { name: "배우 이름", role: "ACTOR", isFeatured: true },
-    { name: "배우 이름", role: "ACTOR" },
-    { name: "배우 이름", role: "ACTOR" },
-    { name: "배우 이름", role: "ACTOR" },
-    { name: "배우 이름", role: "ACTOR" },
-  ],
-};
+const tabs: ArtistTab[] = ["CREATOR", "SINGER", "ACTOR"];
 
-const tabs = Object.keys(artistsByTab) as ArtistTab[];
-
-export default function Artist() {
+export default function Artist({
+  artistsData = fallbackArtistsData,
+}: {
+  artistsData?: Record<ArtistTab, ArtistProfile[]>;
+}) {
   const [activeTab, setActiveTab] = useState<ArtistTab>("CREATOR");
-  const artists = useMemo(() => artistsByTab[activeTab], [activeTab]);
+  const artists = useMemo(() => artistsData[activeTab], [activeTab, artistsData]);
   const artistCountLabel = `${artists.length} ${activeTab}S`;
 
   return (
@@ -109,7 +88,7 @@ export default function Artist() {
         <div className="mt-[12px] grid grid-cols-1 gap-[10px] md:mt-[35px] md:grid-cols-2 md:gap-x-[36px] md:gap-y-[38px] xl:grid-cols-4">
           {artists.map((artist, index) => (
             <ArtistCard
-              key={`${artist.role}-${artist.name}-${index}`}
+              key={artist.id ?? `${artist.role}-${artist.name}-${index}`}
               artist={artist}
             />
           ))}
