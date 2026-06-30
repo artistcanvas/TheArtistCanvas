@@ -198,7 +198,7 @@ export default function HowToCard({ cards, shouldReveal }: HowToCardProps) {
           onClick={() => setActiveCard(null)}
         >
           <div
-            className="relative w-full max-w-[1100px]"
+            className="relative w-full max-w-[1100px] min-[1921px]:max-w-[calc((1100/1920)*100vw)]"
             onClick={(event) => event.stopPropagation()}
           >
             <button
