@@ -1,11 +1,10 @@
 import { getSiteMetadata } from "../../../../_lib/siteMetadata";
+import { assertAdmin } from "../../_lib/auth";
 
 type MetadataBody = {
   password?: unknown;
   websiteUrl?: unknown;
 };
-
-const adminPassword = process.env.ADMIN_PASSWORD;
 
 export async function POST(request: Request) {
   let body: MetadataBody;
@@ -16,8 +15,10 @@ export async function POST(request: Request) {
     return Response.json({ error: "Invalid JSON body." }, { status: 400 });
   }
 
-  if (!adminPassword || body.password !== adminPassword) {
-    return Response.json({ error: "Unauthorized." }, { status: 401 });
+  const adminError = await assertAdmin(request, body);
+
+  if (adminError) {
+    return adminError;
   }
 
   if (typeof body.websiteUrl !== "string" || !body.websiteUrl.trim()) {

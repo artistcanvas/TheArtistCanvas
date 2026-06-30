@@ -1,5 +1,9 @@
 import { revalidatePath } from "next/cache";
-import type { ArtistTab } from "../../../_components/artist/Artist";
+import type {
+  ArtistRole,
+  ArtistTab,
+} from "../../../_components/artist/Artist";
+import { assertAdmin } from "../_lib/auth";
 
 type ArtistRequestBody = {
   password?: unknown;
@@ -19,7 +23,7 @@ type ArtistRequestBody = {
 
 type ArtistRow = {
   id: string;
-  role: ArtistTab;
+  role: ArtistRole;
   name: string;
   profile_image_url: string | null;
   birth_date: string | null;
@@ -33,39 +37,16 @@ type ArtistRow = {
   created_at: string;
 };
 
-const artistTabs: ArtistTab[] = ["CREATOR", "SINGER", "ACTOR"];
+const artistTabs: ArtistTab[] = ["WITH", "MCN"];
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-const adminPassword = process.env.ADMIN_PASSWORD;
 
 function isArtistTab(value: unknown): value is ArtistTab {
   return typeof value === "string" && artistTabs.includes(value as ArtistTab);
 }
 
-function getAdminPassword(request: Request, body?: ArtistRequestBody) {
-  return request.headers.get("x-admin-password") ?? body?.password;
-}
-
-function assertAdmin(request: Request, body?: ArtistRequestBody) {
-  if (!adminPassword) {
-    return Response.json(
-      { error: "ADMIN_PASSWORD is not configured." },
-      { status: 500 }
-    );
-  }
-
-  if (getAdminPassword(request, body) !== adminPassword) {
-    return Response.json({ error: "Unauthorized." }, { status: 401 });
-  }
-
-  if (!supabaseUrl || !serviceRoleKey) {
-    return Response.json(
-      { error: "Supabase admin environment variables are not configured." },
-      { status: 500 }
-    );
-  }
-
-  return null;
+function normalizeArtistRole(role: ArtistRole): ArtistTab {
+  return role === "MCN" ? "MCN" : "WITH";
 }
 
 async function supabaseRequest<T>(
@@ -169,7 +150,8 @@ function buildPayload(body: ArtistRequestBody) {
     throw new Error("Artist name is required.");
   }
 
-  const heightCm = parseInteger(body.heightCm, "Height");
+  const isWithArtist = body.role === "WITH";
+  const heightCm = isWithArtist ? null : parseInteger(body.heightCm, "Height");
   const sortOrder = parseInteger(body.sortOrder, "Sort order");
 
   if (heightCm !== null && (heightCm < 1 || heightCm > 300)) {
@@ -180,15 +162,15 @@ function buildPayload(body: ArtistRequestBody) {
     role: body.role,
     name: body.name.trim(),
     profile_image_url: parseOptionalUrl(body.profileImageUrl),
-    birth_date: parseDate(body.birthDate),
+    birth_date: isWithArtist ? null : parseDate(body.birthDate),
     height_cm: heightCm,
     education:
-      typeof body.education === "string" && body.education.trim()
+      !isWithArtist && typeof body.education === "string" && body.education.trim()
         ? body.education.trim()
         : null,
     youtube_url: parseOptionalUrl(body.youtubeUrl),
-    careers: parseCareers(body.careers),
-    is_featured: body.isFeatured === true,
+    careers: isWithArtist ? [] : parseCareers(body.careers),
+    is_featured: !isWithArtist && body.isFeatured === true,
     is_published: body.isPublished !== false,
     sort_order: sortOrder ?? 0,
     updated_at: new Date().toISOString(),
@@ -196,7 +178,7 @@ function buildPayload(body: ArtistRequestBody) {
 }
 
 export async function GET(request: Request) {
-  const adminError = assertAdmin(request);
+  const adminError = await assertAdmin(request);
 
   if (adminError) {
     return adminError;
@@ -207,7 +189,12 @@ export async function GET(request: Request) {
       "/rest/v1/artist_profiles?select=id,role,name,profile_image_url,birth_date,height_cm,education,youtube_url,careers,is_featured,is_published,sort_order,created_at&order=role.asc,sort_order.asc,created_at.desc"
     );
 
-    return Response.json({ artists });
+    return Response.json({
+      artists: artists.map((artist) => ({
+        ...artist,
+        role: normalizeArtistRole(artist.role),
+      })),
+    });
   } catch (error) {
     return Response.json(
       {
@@ -226,7 +213,7 @@ export async function POST(request: Request) {
     return Response.json({ error: "Invalid JSON body." }, { status: 400 });
   }
 
-  const adminError = assertAdmin(request, body);
+  const adminError = await assertAdmin(request, body);
 
   if (adminError) {
     return adminError;
@@ -261,7 +248,7 @@ export async function PATCH(request: Request) {
     return Response.json({ error: "Invalid JSON body." }, { status: 400 });
   }
 
-  const adminError = assertAdmin(request, body);
+  const adminError = await assertAdmin(request, body);
 
   if (adminError) {
     return adminError;

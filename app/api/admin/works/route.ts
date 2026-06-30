@@ -1,10 +1,13 @@
 import { revalidatePath } from "next/cache";
 import { getYouTubeMetadata } from "../../../_lib/youtube";
 import type { WorkTab } from "../../../_components/works/workTypes";
+import { assertAdmin } from "../_lib/auth";
 
 type AdminWorkRequestBody = {
   password?: unknown;
+  action?: unknown;
   id?: unknown;
+  ids?: unknown;
   tab?: unknown;
   youtubeUrl?: unknown;
   typeLabel?: unknown;
@@ -49,36 +52,13 @@ const workTabs: WorkTab[] = ["Original", "Brand & ppl", "Project"];
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-const adminPassword = process.env.ADMIN_PASSWORD;
 
 function isWorkTab(value: unknown): value is WorkTab {
   return typeof value === "string" && workTabs.includes(value as WorkTab);
 }
 
-function getAdminPassword(request: Request, body?: AdminWorkRequestBody) {
-  return request.headers.get("x-admin-password") ?? body?.password;
-}
-
-function assertAdmin(request: Request, body?: AdminWorkRequestBody) {
-  if (!adminPassword) {
-    return Response.json(
-      { error: "ADMIN_PASSWORD is not configured." },
-      { status: 500 }
-    );
-  }
-
-  if (getAdminPassword(request, body) !== adminPassword) {
-    return Response.json({ error: "Unauthorized." }, { status: 401 });
-  }
-
-  if (!supabaseUrl || !serviceRoleKey) {
-    return Response.json(
-      { error: "Supabase admin environment variables are not configured." },
-      { status: 500 }
-    );
-  }
-
-  return null;
+function isStringArray(value: unknown): value is string[] {
+  return Array.isArray(value) && value.every((item) => typeof item === "string");
 }
 
 async function supabaseRequest<T>(
@@ -119,7 +99,7 @@ async function getOptions() {
       "/rest/v1/work_categories?select=id,tab,label&order=tab.asc,sort_order.asc,label.asc"
     ),
     supabaseRequest<SupabaseAdminWorkRow[]>(
-      `/rest/v1/works?select=${select}&order=created_at.desc`
+      `/rest/v1/works?select=${select}&order=tab.asc,sort_order.asc,created_at.desc`
     ),
   ]);
 
@@ -172,7 +152,7 @@ async function upsertCategory({
 }
 
 export async function GET(request: Request) {
-  const adminError = assertAdmin(request);
+  const adminError = await assertAdmin(request);
 
   if (adminError) {
     return adminError;
@@ -200,7 +180,7 @@ export async function POST(request: Request) {
     return Response.json({ error: "Invalid JSON body." }, { status: 400 });
   }
 
-  const adminError = assertAdmin(request, body);
+  const adminError = await assertAdmin(request, body);
 
   if (adminError) {
     return adminError;
@@ -295,10 +275,48 @@ export async function PATCH(request: Request) {
     return Response.json({ error: "Invalid JSON body." }, { status: 400 });
   }
 
-  const adminError = assertAdmin(request, body);
+  const adminError = await assertAdmin(request, body);
 
   if (adminError) {
     return adminError;
+  }
+
+  if (body.action === "reorder") {
+    if (!isStringArray(body.ids)) {
+      return Response.json({ error: "Work ids are required." }, { status: 400 });
+    }
+
+    try {
+      await Promise.all(
+        body.ids.map((id, index) =>
+          supabaseRequest(
+            `/rest/v1/works?id=eq.${id}`,
+            {
+              method: "PATCH",
+              headers: {
+                Prefer: "return=representation",
+              },
+              body: JSON.stringify({
+                sort_order: index,
+                updated_at: new Date().toISOString(),
+              }),
+            }
+          )
+        )
+      );
+
+      revalidatePath("/work");
+
+      return Response.json({ ok: true });
+    } catch (error) {
+      return Response.json(
+        {
+          error:
+            error instanceof Error ? error.message : "Could not reorder works.",
+        },
+        { status: 500 }
+      );
+    }
   }
 
   if (typeof body.id !== "string" || !body.id.trim()) {
@@ -381,6 +399,50 @@ export async function PATCH(request: Request) {
       {
         error:
           error instanceof Error ? error.message : "Could not update work.",
+      },
+      { status: 500 }
+    );
+  }
+}
+
+export async function DELETE(request: Request) {
+  let body: AdminWorkRequestBody;
+
+  try {
+    body = (await request.json()) as AdminWorkRequestBody;
+  } catch {
+    return Response.json({ error: "Invalid JSON body." }, { status: 400 });
+  }
+
+  const adminError = await assertAdmin(request, body);
+
+  if (adminError) {
+    return adminError;
+  }
+
+  if (typeof body.id !== "string" || !body.id.trim()) {
+    return Response.json({ error: "Work id is required." }, { status: 400 });
+  }
+
+  try {
+    const rows = await supabaseRequest(
+      `/rest/v1/works?id=eq.${body.id}`,
+      {
+        method: "DELETE",
+        headers: {
+          Prefer: "return=representation",
+        },
+      }
+    );
+
+    revalidatePath("/work");
+
+    return Response.json({ work: Array.isArray(rows) ? rows[0] : rows });
+  } catch (error) {
+    return Response.json(
+      {
+        error:
+          error instanceof Error ? error.message : "Could not delete work.",
       },
       { status: 500 }
     );

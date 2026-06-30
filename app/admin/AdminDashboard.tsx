@@ -14,14 +14,18 @@ const tabs: Array<{
   label: string;
   icon: typeof Video;
 }> = [
-  { id: "works", label: "Works", icon: Video },
   { id: "hero", label: "Hero", icon: Home },
+  { id: "works", label: "Works", icon: Video },
   { id: "artist", label: "Artist", icon: Palette },
   { id: "contact", label: "Contact", icon: Mail },
 ];
 
-export default function AdminDashboard() {
-  const [activeTab, setActiveTab] = useState<AdminTab>("works");
+type AdminDashboardProps = {
+  adminPassword: string;
+};
+
+export default function AdminDashboard({ adminPassword }: AdminDashboardProps) {
+  const [activeTab, setActiveTab] = useState<AdminTab>("hero");
 
   return (
     <div className="mx-auto w-full max-w-[1280px] space-y-8">
@@ -65,10 +69,18 @@ export default function AdminDashboard() {
         </div>
       </header>
 
-      {activeTab === "works" ? <AdminWorksForm /> : null}
-      {activeTab === "hero" ? <AdminHeroCardsForm /> : null}
-      {activeTab === "artist" ? <AdminArtistsForm /> : null}
-      {activeTab === "contact" ? <AdminContactForm /> : null}
+      {activeTab === "works" ? (
+        <AdminWorksForm adminPassword={adminPassword} />
+      ) : null}
+      {activeTab === "hero" ? (
+        <AdminHeroCardsForm adminPassword={adminPassword} />
+      ) : null}
+      {activeTab === "artist" ? (
+        <AdminArtistsForm adminPassword={adminPassword} />
+      ) : null}
+      {activeTab === "contact" ? (
+        <AdminContactForm adminPassword={adminPassword} />
+      ) : null}
     </div>
   );
 }

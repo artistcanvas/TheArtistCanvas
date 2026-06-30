@@ -1,6 +1,6 @@
 import { fallbackWorksData } from "../_components/works/workFallbackData";
 import type { PplPartner, Work, WorkCategory, WorksData, WorkTab } from "../_components/works/workTypes";
-import { workTabs } from "../_components/works/workTypes";
+import { workDataTabs } from "../_components/works/workTypes";
 import { getYouTubeThumbnailUrl, getYouTubeVideoId } from "./youtube";
 
 type SupabaseWorkRow = {
@@ -49,7 +49,7 @@ function emptyWorksData(): WorksData {
 function mapRowsToWorksData(rows: SupabaseWorkRow[]): WorksData {
   const worksData = emptyWorksData();
   const categoryIdsByTab = new Map<WorkTab, Set<string>>(
-    workTabs.map((tab) => [tab, new Set<string>()])
+    workDataTabs.map((tab) => [tab, new Set<string>()])
   );
 
   rows.forEach((row) => {
@@ -135,7 +135,7 @@ export async function getWorksData(): Promise<WorksData> {
     worksData.pplPartners = pplPartners;
   }
 
-  return workTabs.some((tab) => worksData[tab].works.length > 0)
+  return workDataTabs.some((tab) => worksData[tab].works.length > 0)
     ? worksData
     : fallbackWorksData;
 }

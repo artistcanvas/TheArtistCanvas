@@ -1,5 +1,6 @@
 import { revalidatePath } from "next/cache";
 import type { ContactInquiryType } from "../../../_lib/contact";
+import { assertAdmin } from "../_lib/auth";
 
 type ContactRequestBody = {
   password?: unknown;
@@ -28,39 +29,12 @@ const inquiryTypes: ContactInquiryType[] = [
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-const adminPassword = process.env.ADMIN_PASSWORD;
 
 function isInquiryType(value: unknown): value is ContactInquiryType {
   return (
     typeof value === "string" &&
     inquiryTypes.includes(value as ContactInquiryType)
   );
-}
-
-function getAdminPassword(request: Request, body?: ContactRequestBody) {
-  return request.headers.get("x-admin-password") ?? body?.password;
-}
-
-function assertAdmin(request: Request, body?: ContactRequestBody) {
-  if (!adminPassword) {
-    return Response.json(
-      { error: "ADMIN_PASSWORD is not configured." },
-      { status: 500 }
-    );
-  }
-
-  if (getAdminPassword(request, body) !== adminPassword) {
-    return Response.json({ error: "Unauthorized." }, { status: 401 });
-  }
-
-  if (!supabaseUrl || !serviceRoleKey) {
-    return Response.json(
-      { error: "Supabase admin environment variables are not configured." },
-      { status: 500 }
-    );
-  }
-
-  return null;
 }
 
 async function supabaseRequest<T>(
@@ -137,7 +111,7 @@ function buildPayload(body: ContactRequestBody) {
 }
 
 export async function GET(request: Request) {
-  const adminError = assertAdmin(request);
+  const adminError = await assertAdmin(request);
 
   if (adminError) {
     return adminError;
@@ -167,7 +141,7 @@ export async function POST(request: Request) {
     return Response.json({ error: "Invalid JSON body." }, { status: 400 });
   }
 
-  const adminError = assertAdmin(request, body);
+  const adminError = await assertAdmin(request, body);
 
   if (adminError) {
     return adminError;
@@ -206,7 +180,7 @@ export async function PATCH(request: Request) {
     return Response.json({ error: "Invalid JSON body." }, { status: 400 });
   }
 
-  const adminError = assertAdmin(request, body);
+  const adminError = await assertAdmin(request, body);
 
   if (adminError) {
     return adminError;

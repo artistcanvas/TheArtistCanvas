@@ -1,7 +1,7 @@
 "use client";
 
 import { Check, Loader2, Mail, Pencil, Plus, Save, X } from "lucide-react";
-import { FormEvent, useMemo, useState } from "react";
+import { FormEvent, useEffect, useMemo, useState } from "react";
 import type { ContactInquiryType } from "../_lib/contact";
 import { contactSections } from "../_lib/contact";
 
@@ -16,16 +16,14 @@ type AdminContactEmail = {
 
 const defaultInquiryType: ContactInquiryType = "content_production";
 
-function getInitialPassword() {
-  if (typeof window === "undefined") {
-    return "";
-  }
+type AdminContactFormProps = {
+  adminPassword: string;
+};
 
-  return window.localStorage.getItem("tac-admin-password") ?? "";
-}
-
-export default function AdminContactForm() {
-  const [password, setPassword] = useState(getInitialPassword);
+export default function AdminContactForm({
+  adminPassword,
+}: AdminContactFormProps) {
+  const [password, setPassword] = useState(adminPassword);
   const [emails, setEmails] = useState<AdminContactEmail[]>([]);
   const [editingEmailId, setEditingEmailId] = useState<string | null>(null);
   const [inquiryType, setInquiryType] =
@@ -71,9 +69,17 @@ export default function AdminContactForm() {
     }
 
     setEmails(data.emails ?? []);
-    window.localStorage.setItem("tac-admin-password", adminPassword);
     setStatus("Contact 관리자 연결을 확인했습니다.");
   };
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      void loadEmails(adminPassword);
+    }, 0);
+
+    return () => window.clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [adminPassword]);
 
   const selectEmail = (item: AdminContactEmail) => {
     setEditingEmailId(item.id);
@@ -205,7 +211,7 @@ export default function AdminContactForm() {
           ) : null}
         </div>
 
-        <div className="grid gap-4 md:grid-cols-[1fr_auto]">
+        <div className="hidden">
           <label className="block">
             <span className="text-[13px] font-semibold text-[#9A99A2]">
               관리자 비밀번호

@@ -1,7 +1,7 @@
 "use client";
 
 import { Check, Loader2, Pencil, Plus, Save, Upload, X } from "lucide-react";
-import { FormEvent, useMemo, useState } from "react";
+import { FormEvent, useEffect, useMemo, useState } from "react";
 import type { ArtistTab } from "../_components/artist/Artist";
 
 type AdminArtist = {
@@ -20,21 +20,19 @@ type AdminArtist = {
   created_at: string;
 };
 
-const tabs: ArtistTab[] = ["CREATOR", "SINGER", "ACTOR"];
+const tabs: ArtistTab[] = ["WITH", "MCN"];
 
-function getInitialPassword() {
-  if (typeof window === "undefined") {
-    return "";
-  }
+type AdminArtistsFormProps = {
+  adminPassword: string;
+};
 
-  return window.localStorage.getItem("tac-admin-password") ?? "";
-}
-
-export default function AdminArtistsForm() {
-  const [password, setPassword] = useState(getInitialPassword);
+export default function AdminArtistsForm({
+  adminPassword,
+}: AdminArtistsFormProps) {
+  const [password, setPassword] = useState(adminPassword);
   const [artists, setArtists] = useState<AdminArtist[]>([]);
   const [editingArtistId, setEditingArtistId] = useState<string | null>(null);
-  const [role, setRole] = useState<ArtistTab>("CREATOR");
+  const [role, setRole] = useState<ArtistTab>("WITH");
   const [name, setName] = useState("");
   const [profileImageUrl, setProfileImageUrl] = useState("");
   const [birthDate, setBirthDate] = useState("");
@@ -51,6 +49,7 @@ export default function AdminArtistsForm() {
   const [isUploading, setIsUploading] = useState(false);
 
   const isEditMode = Boolean(editingArtistId);
+  const isWithArtist = role === "WITH";
   const filteredArtists = useMemo(
     () => artists.filter((artist) => artist.role === role),
     [artists, role]
@@ -58,7 +57,7 @@ export default function AdminArtistsForm() {
 
   const resetForm = () => {
     setEditingArtistId(null);
-    setRole("CREATOR");
+    setRole("WITH");
     setName("");
     setProfileImageUrl("");
     setBirthDate("");
@@ -91,9 +90,17 @@ export default function AdminArtistsForm() {
     }
 
     setArtists(data.artists ?? []);
-    window.localStorage.setItem("tac-admin-password", adminPassword);
     setStatus("Artist 관리자 연결을 확인했습니다.");
   };
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      void loadArtists(adminPassword);
+    }, 0);
+
+    return () => window.clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [adminPassword]);
 
   const selectArtist = (artist: AdminArtist) => {
     setEditingArtistId(artist.id);
@@ -136,13 +143,13 @@ export default function AdminArtistsForm() {
         role,
         name,
         profileImageUrl,
-        birthDate,
-        heightCm,
-        education,
+        birthDate: isWithArtist ? "" : birthDate,
+        heightCm: isWithArtist ? "" : heightCm,
+        education: isWithArtist ? "" : education,
         youtubeUrl,
-        careers,
+        careers: isWithArtist ? "" : careers,
         sortOrder,
-        isFeatured,
+        isFeatured: isWithArtist ? false : isFeatured,
         isPublished,
       }),
     });
@@ -189,12 +196,12 @@ export default function AdminArtistsForm() {
     setIsUploading(false);
 
     if (!response.ok) {
-      setStatus(data.error ?? "프로필 이미지를 업로드하지 못했습니다.");
+      setStatus(data.error ?? "이미지를 업로드하지 못했습니다.");
       return;
     }
 
     setProfileImageUrl(data.imageUrl);
-    setStatus("프로필 이미지를 업로드했습니다.");
+    setStatus("이미지를 업로드했습니다.");
   };
 
   return (
@@ -271,7 +278,7 @@ export default function AdminArtistsForm() {
           ) : null}
         </div>
 
-        <div className="grid gap-4 md:grid-cols-[1fr_auto]">
+        <div className="hidden">
           <label className="block">
             <span className="text-[13px] font-semibold text-[#9A99A2]">
               관리자 비밀번호
@@ -289,12 +296,16 @@ export default function AdminArtistsForm() {
             disabled={isLoading}
             className="mt-auto inline-flex h-[46px] items-center justify-center gap-2 rounded-[8px] bg-white px-5 text-[14px] font-bold text-[#060607] transition hover:bg-[#D7D7DC] disabled:opacity-50"
           >
-            {isLoading ? <Loader2 size={16} className="animate-spin" /> : <Check size={16} />}
+            {isLoading ? (
+              <Loader2 size={16} className="animate-spin" />
+            ) : (
+              <Check size={16} />
+            )}
             확인
           </button>
         </div>
 
-        <div className="grid gap-4 md:grid-cols-3">
+        <div className="grid gap-4 md:grid-cols-2">
           {tabs.map((item) => {
             const isActive = item === role;
 
@@ -323,39 +334,43 @@ export default function AdminArtistsForm() {
             <input
               value={name}
               onChange={(event) => setName(event.target.value)}
-              placeholder="가수 이름"
+              placeholder="아티스트 이름"
               className="mt-2 h-[46px] w-full rounded-[8px] border border-[#2A2A2E] bg-[#101012] px-4 text-[14px] outline-none transition placeholder:text-[#4B4A52] focus:border-[#8D4CFF]"
             />
           </label>
 
-          <label className="block">
-            <span className="text-[13px] font-semibold text-[#9A99A2]">
-              생년월일
-            </span>
-            <input
-              type="date"
-              value={birthDate}
-              onChange={(event) => setBirthDate(event.target.value)}
-              className="mt-2 h-[46px] w-full rounded-[8px] border border-[#2A2A2E] bg-[#101012] px-4 text-[14px] outline-none transition focus:border-[#8D4CFF]"
-            />
-          </label>
+          {!isWithArtist ? (
+            <label className="block">
+              <span className="text-[13px] font-semibold text-[#9A99A2]">
+                생년월일
+              </span>
+              <input
+                type="date"
+                value={birthDate}
+                onChange={(event) => setBirthDate(event.target.value)}
+                className="mt-2 h-[46px] w-full rounded-[8px] border border-[#2A2A2E] bg-[#101012] px-4 text-[14px] outline-none transition focus:border-[#8D4CFF]"
+              />
+            </label>
+          ) : null}
         </div>
 
         <div className="grid gap-4 md:grid-cols-2">
-          <label className="block">
-            <span className="text-[13px] font-semibold text-[#9A99A2]">
-              키(cm)
-            </span>
-            <input
-              type="number"
-              min="1"
-              max="300"
-              value={heightCm}
-              onChange={(event) => setHeightCm(event.target.value)}
-              placeholder="170"
-              className="mt-2 h-[46px] w-full rounded-[8px] border border-[#2A2A2E] bg-[#101012] px-4 text-[14px] outline-none transition placeholder:text-[#4B4A52] focus:border-[#8D4CFF]"
-            />
-          </label>
+          {!isWithArtist ? (
+            <label className="block">
+              <span className="text-[13px] font-semibold text-[#9A99A2]">
+                키(cm)
+              </span>
+              <input
+                type="number"
+                min="1"
+                max="300"
+                value={heightCm}
+                onChange={(event) => setHeightCm(event.target.value)}
+                placeholder="170"
+                className="mt-2 h-[46px] w-full rounded-[8px] border border-[#2A2A2E] bg-[#101012] px-4 text-[14px] outline-none transition placeholder:text-[#4B4A52] focus:border-[#8D4CFF]"
+              />
+            </label>
+          ) : null}
 
           <label className="block">
             <span className="text-[13px] font-semibold text-[#9A99A2]">
@@ -370,22 +385,24 @@ export default function AdminArtistsForm() {
           </label>
         </div>
 
-        <label className="block">
-          <span className="text-[13px] font-semibold text-[#9A99A2]">
-            학력
-          </span>
-          <input
-            value={education}
-            onChange={(event) => setEducation(event.target.value)}
-            placeholder="OO대학교 음악학과"
-            className="mt-2 h-[46px] w-full rounded-[8px] border border-[#2A2A2E] bg-[#101012] px-4 text-[14px] outline-none transition placeholder:text-[#4B4A52] focus:border-[#8D4CFF]"
-          />
-        </label>
+        {!isWithArtist ? (
+          <label className="block">
+            <span className="text-[13px] font-semibold text-[#9A99A2]">
+              학력
+            </span>
+            <input
+              value={education}
+              onChange={(event) => setEducation(event.target.value)}
+              placeholder="OO대학교 음악학과"
+              className="mt-2 h-[46px] w-full rounded-[8px] border border-[#2A2A2E] bg-[#101012] px-4 text-[14px] outline-none transition placeholder:text-[#4B4A52] focus:border-[#8D4CFF]"
+            />
+          </label>
+        ) : null}
 
         <div className="grid gap-4 md:grid-cols-[1fr_auto]">
           <label className="block">
             <span className="text-[13px] font-semibold text-[#9A99A2]">
-              프로필 이미지 URL
+              이미지 URL
             </span>
             <input
               type="url"
@@ -396,7 +413,11 @@ export default function AdminArtistsForm() {
             />
           </label>
           <label className="mt-auto inline-flex h-[46px] cursor-pointer items-center justify-center gap-2 rounded-[8px] border border-[#3A3A40] px-5 text-[14px] font-bold text-white transition hover:border-[#8D4CFF]">
-            {isUploading ? <Loader2 size={16} className="animate-spin" /> : <Upload size={16} />}
+            {isUploading ? (
+              <Loader2 size={16} className="animate-spin" />
+            ) : (
+              <Upload size={16} />
+            )}
             업로드
             <input
               type="file"
@@ -423,17 +444,19 @@ export default function AdminArtistsForm() {
           />
         </label>
 
-        <label className="block">
-          <span className="text-[13px] font-semibold text-[#9A99A2]">
-            주요 경력
-          </span>
-          <textarea
-            value={careers}
-            onChange={(event) => setCareers(event.target.value)}
-            placeholder={"하루 끝의 나 - Making Film\n정규 앨범 발매 - OO편"}
-            className="mt-2 min-h-[132px] w-full rounded-[8px] border border-[#2A2A2E] bg-[#101012] px-4 py-3 text-[14px] outline-none transition placeholder:text-[#4B4A52] focus:border-[#8D4CFF]"
-          />
-        </label>
+        {!isWithArtist ? (
+          <label className="block">
+            <span className="text-[13px] font-semibold text-[#9A99A2]">
+              주요 경력
+            </span>
+            <textarea
+              value={careers}
+              onChange={(event) => setCareers(event.target.value)}
+              placeholder={"한 줄에 하나씩 입력\n예: 정규 앨범 발매 - OO편"}
+              className="mt-2 min-h-[132px] w-full rounded-[8px] border border-[#2A2A2E] bg-[#101012] px-4 py-3 text-[14px] outline-none transition placeholder:text-[#4B4A52] focus:border-[#8D4CFF]"
+            />
+          </label>
+        ) : null}
 
         <div className="flex flex-wrap gap-3">
           <label className="flex h-[42px] w-fit items-center gap-3 rounded-[8px] border border-[#2A2A2E] px-4 text-[13px] font-semibold text-[#C7C6CC]">
@@ -445,15 +468,17 @@ export default function AdminArtistsForm() {
             />
             공개
           </label>
-          <label className="flex h-[42px] w-fit items-center gap-3 rounded-[8px] border border-[#2A2A2E] px-4 text-[13px] font-semibold text-[#C7C6CC]">
-            <input
-              type="checkbox"
-              checked={isFeatured}
-              onChange={(event) => setIsFeatured(event.target.checked)}
-              className="size-4 accent-[#8D4CFF]"
-            />
-            Featured
-          </label>
+          {!isWithArtist ? (
+            <label className="flex h-[42px] w-fit items-center gap-3 rounded-[8px] border border-[#2A2A2E] px-4 text-[13px] font-semibold text-[#C7C6CC]">
+              <input
+                type="checkbox"
+                checked={isFeatured}
+                onChange={(event) => setIsFeatured(event.target.checked)}
+                className="size-4 accent-[#8D4CFF]"
+              />
+              Featured
+            </label>
+          ) : null}
         </div>
 
         <div className="flex flex-wrap items-center gap-4">
@@ -462,7 +487,11 @@ export default function AdminArtistsForm() {
             disabled={isSaving}
             className="inline-flex h-[50px] items-center justify-center gap-2 rounded-[8px] bg-[#8D4CFF] px-7 text-[15px] font-bold text-white transition hover:bg-[#7B3EF0] disabled:opacity-50"
           >
-            {isSaving ? <Loader2 size={18} className="animate-spin" /> : <Save size={18} />}
+            {isSaving ? (
+              <Loader2 size={18} className="animate-spin" />
+            ) : (
+              <Save size={18} />
+            )}
             {isEditMode ? "Artist 수정 저장" : "Artist 저장"}
           </button>
           {isEditMode ? (

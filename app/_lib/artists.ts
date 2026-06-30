@@ -1,9 +1,13 @@
 import { fallbackArtistsData } from "../_components/artist/artistFallbackData";
-import type { ArtistProfile, ArtistTab } from "../_components/artist/Artist";
+import type {
+  ArtistProfile,
+  ArtistRole,
+  ArtistTab,
+} from "../_components/artist/Artist";
 
 type SupabaseArtistRow = {
   id: string;
-  role: ArtistTab;
+  role: ArtistRole;
   name: string;
   profile_image_url: string | null;
   birth_date: string | null;
@@ -14,15 +18,14 @@ type SupabaseArtistRow = {
   is_featured: boolean;
 };
 
-const artistTabs: ArtistTab[] = ["CREATOR", "SINGER", "ACTOR"];
+const artistTabs: ArtistTab[] = ["WITH", "MCN"];
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
 function emptyArtistsData(): Record<ArtistTab, ArtistProfile[]> {
   return {
-    CREATOR: [],
-    SINGER: [],
-    ACTOR: [],
+    WITH: [],
+    MCN: [],
   };
 }
 
@@ -34,7 +37,9 @@ function mapRowsToArtistsData(rows: SupabaseArtistRow[]) {
   const artistsData = emptyArtistsData();
 
   rows.forEach((row) => {
-    artistsData[row.role].push({
+    const tab: ArtistTab = row.role === "MCN" ? "MCN" : "WITH";
+
+    artistsData[tab].push({
       id: row.id,
       name: row.name,
       role: row.role,

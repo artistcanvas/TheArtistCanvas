@@ -1,7 +1,7 @@
 "use client";
 
 import { Check, Eye, Loader2, Save } from "lucide-react";
-import { FormEvent, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
 
 type AdminHeroCard = {
   id: string;
@@ -21,16 +21,14 @@ type YouTubeMetadata = {
   channelName: string;
 };
 
-function getInitialPassword() {
-  if (typeof window === "undefined") {
-    return "";
-  }
+type AdminHeroCardsFormProps = {
+  adminPassword: string;
+};
 
-  return window.localStorage.getItem("tac-admin-password") ?? "";
-}
-
-export default function AdminHeroCardsForm() {
-  const [password, setPassword] = useState(getInitialPassword);
+export default function AdminHeroCardsForm({
+  adminPassword,
+}: AdminHeroCardsFormProps) {
+  const [password, setPassword] = useState(adminPassword);
   const [cards, setCards] = useState<AdminHeroCard[]>([]);
   const [position, setPosition] = useState(1);
   const [youtubeUrl, setYoutubeUrl] = useState("");
@@ -66,9 +64,17 @@ export default function AdminHeroCardsForm() {
     }
 
     setCards(data.cards ?? []);
-    window.localStorage.setItem("tac-admin-password", adminPassword);
     setStatus("Hero 카드 목록을 불러왔습니다.");
   };
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      void loadCards(adminPassword);
+    }, 0);
+
+    return () => window.clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [adminPassword]);
 
   const selectPosition = (nextPosition: number) => {
     const card = cards.find((item) => item.position === nextPosition);
@@ -214,7 +220,7 @@ export default function AdminHeroCardsForm() {
           </div>
         </div>
 
-        <div className="grid gap-4 md:grid-cols-[1fr_auto]">
+        <div className="hidden">
           <label className="block">
             <span className="text-[13px] font-semibold text-[#9A99A2]">
               관리자 비밀번호

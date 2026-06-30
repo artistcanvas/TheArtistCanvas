@@ -1,6 +1,7 @@
+import { assertAdminPassword } from "../../_lib/auth";
+
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-const adminPassword = process.env.ADMIN_PASSWORD;
 const bucketName = "artist-images";
 
 function getExtension(file: File) {
@@ -25,8 +26,10 @@ export async function POST(request: Request) {
   const password = formData?.get("password");
   const file = formData?.get("file");
 
-  if (!adminPassword || password !== adminPassword) {
-    return Response.json({ error: "Unauthorized." }, { status: 401 });
+  const adminError = await assertAdminPassword(password);
+
+  if (adminError) {
+    return adminError;
   }
 
   if (!(file instanceof File)) {

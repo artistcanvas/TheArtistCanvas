@@ -1,15 +1,15 @@
-import type { ArtistProfile, ArtistTab } from "./Artist";
+import type { ArtistProfile, ArtistRole, ArtistTab } from "./Artist";
 
 const sampleCareers = [
-  "하루 끝의 나 - Making Film",
-  "정규 앨범 발매 - OO편",
-  "콘텐츠 투어 - OO",
+  "Music video appearance",
+  "Brand campaign collaboration",
+  "Short-form content project",
 ];
 
-function makeArtists(role: ArtistTab, name: string, education: string) {
+function makeArtists(role: ArtistRole, name: string, education: string) {
   return Array.from({ length: 8 }, (_, index): ArtistProfile => ({
     id: `${role.toLowerCase()}-${index + 1}`,
-    name,
+    name: `${name} ${index + 1}`,
     role,
     birthDate: "1998.07.22",
     height: "170cm",
@@ -21,7 +21,10 @@ function makeArtists(role: ArtistTab, name: string, education: string) {
 }
 
 export const fallbackArtistsData: Record<ArtistTab, ArtistProfile[]> = {
-  CREATOR: makeArtists("CREATOR", "크리에이터 이름", "OO대학교 영상학과"),
-  SINGER: makeArtists("SINGER", "가수 이름", "OO대학교 음악학과"),
-  ACTOR: makeArtists("ACTOR", "배우 이름", "OO대학교 연극영화학과"),
+  WITH: [
+    ...makeArtists("CREATOR", "Creator", "Media Contents"),
+    ...makeArtists("SINGER", "Singer", "Music"),
+    ...makeArtists("ACTOR", "Actor", "Film and Theater"),
+  ],
+  MCN: makeArtists("MCN", "MCN Artist", "Media Contents"),
 };

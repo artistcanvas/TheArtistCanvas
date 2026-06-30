@@ -1,16 +1,20 @@
 "use client";
 
 import {
+  ArrowDown,
+  ArrowUp,
   Check,
   Eye,
   Loader2,
   Pencil,
   Plus,
   Save,
+  Trash2,
   X,
 } from "lucide-react";
-import { FormEvent, useMemo, useState } from "react";
-import type { WorkTab } from "../_components/works/workTypes";
+import { FormEvent, useEffect, useMemo, useState } from "react";
+import type { WorkTab, WorkViewTab } from "../_components/works/workTypes";
+import { workTabLabels } from "../_components/works/workTypes";
 
 type YouTubeMetadata = {
   source: "youtube-data-api" | "youtube-oembed" | "saved";
@@ -66,21 +70,21 @@ type SiteMetadata = {
   logoUrl: string | null;
 };
 
-const tabs: WorkTab[] = ["Original", "Brand & ppl", "Project"];
+const tabs: WorkViewTab[] = ["Original", "Brand & ppl", "Project", "PPL"];
 const descriptionLimit = 80;
 
-function getInitialPassword() {
-  if (typeof window === "undefined") {
-    return "";
-  }
-
-  return window.localStorage.getItem("tac-admin-password") ?? "";
+function isWorkTab(tab: WorkViewTab): tab is WorkTab {
+  return tab !== "PPL";
 }
 
-export default function AdminWorksForm() {
-  const [password, setPassword] = useState(getInitialPassword);
+type AdminWorksFormProps = {
+  adminPassword: string;
+};
+
+export default function AdminWorksForm({ adminPassword }: AdminWorksFormProps) {
+  const [password, setPassword] = useState(adminPassword);
   const [editingWorkId, setEditingWorkId] = useState<string | null>(null);
-  const [tab, setTab] = useState<WorkTab>("Original");
+  const [tab, setTab] = useState<WorkViewTab>("Original");
   const [youtubeUrl, setYoutubeUrl] = useState("");
   const [typeLabel, setTypeLabel] = useState("");
   const [categoryLabel, setCategoryLabel] = useState("");
@@ -110,19 +114,25 @@ export default function AdminWorksForm() {
 
   const isEditMode = Boolean(editingWorkId);
   const isPplEditMode = Boolean(editingPplId);
+  const isPplTab = tab === "PPL";
 
   const categoriesByTab = useMemo(
-    () => options.categories.filter((category) => category.tab === tab),
+    () =>
+      isWorkTab(tab)
+        ? options.categories.filter((category) => category.tab === tab)
+        : [],
     [options.categories, tab]
   );
   const filteredWorks = useMemo(
-    () => options.works.filter((work) => work.tab === tab),
+    () => (isWorkTab(tab) ? options.works.filter((work) => work.tab === tab) : []),
     [options.works, tab]
   );
+  const activeListLabel = isPplTab ? "등록된 PPL" : "등록된 Works";
+  const activeListItems = isPplTab ? pplPartners : filteredWorks;
 
   const resetWorkForm = () => {
     setEditingWorkId(null);
-    setTab("Original");
+    setTab(isWorkTab(tab) ? tab : "Original");
     setYoutubeUrl("");
     setTypeLabel("");
     setCategoryLabel("");
@@ -133,6 +143,7 @@ export default function AdminWorksForm() {
   };
 
   const resetPplForm = () => {
+    setTab("PPL");
     setEditingPplId(null);
     setPplName("");
     setPplWebsiteUrl("");
@@ -173,10 +184,18 @@ export default function AdminWorksForm() {
     }
 
     setOptions(data);
-    window.localStorage.setItem("tac-admin-password", adminPassword);
     await loadPplPartners(adminPassword);
     setStatus("관리자 연결이 확인됐습니다.");
   };
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      void loadOptions(adminPassword);
+    }, 0);
+
+    return () => window.clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [adminPassword]);
 
   const loadMetadata = async () => {
     if (!youtubeUrl.trim()) {
@@ -259,6 +278,7 @@ export default function AdminWorksForm() {
   };
 
   const selectPpl = (partner: PplPartner) => {
+    setTab("PPL");
     setEditingPplId(partner.id);
     setPplName(partner.name);
     setPplWebsiteUrl(partner.website_url);
@@ -277,6 +297,11 @@ export default function AdminWorksForm() {
 
     if (!password) {
       setStatus("관리자 비밀번호를 입력해주세요.");
+      return;
+    }
+
+    if (!isWorkTab(tab)) {
+      setStatus("Works 탭을 선택해주세요.");
       return;
     }
 
@@ -398,6 +423,151 @@ export default function AdminWorksForm() {
     setStatus("로고 이미지를 업로드했습니다.");
   };
 
+  const reorderWorks = async (workId: string, direction: -1 | 1) => {
+    const currentIndex = filteredWorks.findIndex((work) => work.id === workId);
+    const nextIndex = currentIndex + direction;
+
+    if (currentIndex < 0 || nextIndex < 0 || nextIndex >= filteredWorks.length) {
+      return;
+    }
+
+    const nextWorks = [...filteredWorks];
+    [nextWorks[currentIndex], nextWorks[nextIndex]] = [
+      nextWorks[nextIndex],
+      nextWorks[currentIndex],
+    ];
+
+    setStatus("Works 순서를 저장하는 중입니다.");
+
+    const response = await fetch("/api/admin/works", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        action: "reorder",
+        password,
+        ids: nextWorks.map((work) => work.id),
+      }),
+    });
+    const data = await response.json();
+
+    if (!response.ok) {
+      setStatus(data.error ?? "Works 순서를 저장하지 못했습니다.");
+      return;
+    }
+
+    await loadOptions(password);
+    setStatus("Works 순서를 저장했습니다.");
+  };
+
+  const reorderPpl = async (partnerId: string, direction: -1 | 1) => {
+    const currentIndex = pplPartners.findIndex((partner) => partner.id === partnerId);
+    const nextIndex = currentIndex + direction;
+
+    if (currentIndex < 0 || nextIndex < 0 || nextIndex >= pplPartners.length) {
+      return;
+    }
+
+    const nextPartners = [...pplPartners];
+    [nextPartners[currentIndex], nextPartners[nextIndex]] = [
+      nextPartners[nextIndex],
+      nextPartners[currentIndex],
+    ];
+
+    setStatus("PPL 순서를 저장하는 중입니다.");
+
+    const response = await fetch("/api/admin/ppl", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        action: "reorder",
+        password,
+        ids: nextPartners.map((partner) => partner.id),
+      }),
+    });
+    const data = await response.json();
+
+    if (!response.ok) {
+      setStatus(data.error ?? "PPL 순서를 저장하지 못했습니다.");
+      return;
+    }
+
+    await loadPplPartners(password);
+    setStatus("PPL 순서를 저장했습니다.");
+  };
+
+  const deleteWork = async (work: AdminWork) => {
+    if (!window.confirm(`"${work.title}" 영상을 삭제할까요?`)) {
+      return;
+    }
+
+    const response = await fetch("/api/admin/works", {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ password, id: work.id }),
+    });
+    const data = await response.json();
+
+    if (!response.ok) {
+      setStatus(data.error ?? "영상을 삭제하지 못했습니다.");
+      return;
+    }
+
+    if (editingWorkId === work.id) {
+      resetWorkForm();
+    }
+
+    await loadOptions(password);
+    setStatus("영상을 삭제했습니다.");
+  };
+
+  const deletePpl = async (partner: PplPartner) => {
+    if (!window.confirm(`"${partner.name}" PPL을 삭제할까요?`)) {
+      return;
+    }
+
+    const response = await fetch("/api/admin/ppl", {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ password, id: partner.id }),
+    });
+    const data = await response.json();
+
+    if (!response.ok) {
+      setStatus(data.error ?? "PPL을 삭제하지 못했습니다.");
+      return;
+    }
+
+    if (editingPplId === partner.id) {
+      resetPplForm();
+    }
+
+    await loadPplPartners(password);
+    setStatus("PPL을 삭제했습니다.");
+  };
+
+  const tabButtons = (
+    <div className="grid gap-3 md:grid-cols-4">
+      {tabs.map((item) => {
+        const isActive = item === tab;
+
+        return (
+          <button
+            key={item}
+            type="button"
+            onClick={() => setTab(item)}
+            className={`h-[46px] rounded-[8px] border text-[13px] font-bold uppercase tracking-[1.2px] transition ${
+              isActive
+                ? "border-[#8D4CFF] bg-[#8D4CFF] text-white"
+                : "border-[#2A2A2E] bg-[#101012] text-[#8E8D96] hover:border-[#6E6C76]"
+            }`}
+          >
+            {workTabLabels[item]}
+          </button>
+        );
+      })}
+    </div>
+  );
+
   return (
     <section className="mx-auto grid w-full max-w-[1280px] gap-8 xl:grid-cols-[280px_minmax(0,1fr)_360px]">
       <aside className="space-y-8 xl:sticky xl:top-[120px] xl:h-fit">
@@ -406,97 +576,139 @@ export default function AdminWorksForm() {
             <p className="text-[12px] font-semibold uppercase tracking-[2px] text-[#8D4CFF]">
               Library
             </p>
-            <h2 className="mt-2 text-[20px] font-bold">등록된 Works</h2>
+            <h2 className="mt-2 text-[20px] font-bold">{activeListLabel}</h2>
             <p className="mt-2 text-[11px] font-bold uppercase tracking-[1.4px] text-[#6E6C76]">
-              {tab}
+              {workTabLabels[tab]}
             </p>
           </div>
 
           <button
             type="button"
-            onClick={resetWorkForm}
+            onClick={isPplTab ? resetPplForm : resetWorkForm}
             className="inline-flex h-[40px] w-full items-center justify-center gap-2 rounded-[8px] border border-[#2A2A2E] text-[13px] font-bold text-white transition hover:border-[#8D4CFF]"
           >
             <Plus size={15} />
-            영상 추가
+            {isPplTab ? "PPL 추가" : "영상 추가"}
           </button>
 
           <div className="max-h-[360px] space-y-2 overflow-y-auto pr-1">
-            {filteredWorks.length > 0 ? (
-              filteredWorks.map((work) => {
+            {!isPplTab && filteredWorks.length > 0 ? (
+              filteredWorks.map((work, index) => {
                 const isActive = work.id === editingWorkId;
 
                 return (
-                  <button
+                  <div
                     key={work.id}
-                    type="button"
-                    onClick={() => selectWork(work)}
-                    className={`w-full rounded-[8px] border p-3 text-left transition ${
+                    className={`grid grid-cols-[1fr_auto] gap-2 rounded-[8px] border p-3 transition ${
                       isActive
                         ? "border-[#8D4CFF] bg-[#171122]"
                         : "border-[#222226] bg-[#101012] hover:border-[#4C4B52]"
                     }`}
                   >
-                    <span className="block truncate text-[13px] font-bold text-white">
-                      {work.title}
-                    </span>
-                    <span className="mt-2 flex items-center justify-between gap-2 text-[11px] font-semibold text-[#6E6C76]">
-                      <span>{work.tab}</span>
-                      <span>{work.is_published ? "공개" : "비공개"}</span>
-                    </span>
-                  </button>
+                    <button
+                      type="button"
+                      onClick={() => selectWork(work)}
+                      className="min-w-0 text-left"
+                    >
+                      <span className="block truncate text-[13px] font-bold text-white">
+                        {work.title}
+                      </span>
+                      <span className="mt-2 block text-[11px] font-semibold text-[#6E6C76]">
+                        {work.is_published ? "공개" : "비공개"}
+                      </span>
+                    </button>
+                    <div className="grid grid-cols-2 gap-1">
+                      <button
+                        type="button"
+                        onClick={() => reorderWorks(work.id, -1)}
+                        disabled={index === 0}
+                        aria-label={`${work.title} 위로 이동`}
+                        className="flex size-7 items-center justify-center rounded-[6px] border border-[#303036] text-[#B9B8C0] transition hover:border-[#8D4CFF] hover:text-white disabled:opacity-30"
+                      >
+                        <ArrowUp size={14} />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => reorderWorks(work.id, 1)}
+                        disabled={index === filteredWorks.length - 1}
+                        aria-label={`${work.title} 아래로 이동`}
+                        className="flex size-7 items-center justify-center rounded-[6px] border border-[#303036] text-[#B9B8C0] transition hover:border-[#8D4CFF] hover:text-white disabled:opacity-30"
+                      >
+                        <ArrowDown size={14} />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => deleteWork(work)}
+                        aria-label={`${work.title} 삭제`}
+                        className="col-span-2 flex h-7 items-center justify-center rounded-[6px] border border-[#303036] text-[#B9B8C0] transition hover:border-[#FF6B6B] hover:text-[#FF9A9A]"
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    </div>
+                  </div>
                 );
               })
-            ) : (
-              <p className="rounded-[8px] border border-[#222226] bg-[#101012] p-4 text-[13px] text-[#8E8D96]">
-                비밀번호 확인 후 목록이 표시됩니다.
-              </p>
-            )}
-          </div>
-        </div>
-
-        <div className="space-y-4">
-          <div className="border-b border-[#222226] pb-4">
-            <h2 className="text-[20px] font-bold">PPL</h2>
-          </div>
-
-          <button
-            type="button"
-            onClick={resetPplForm}
-            className="inline-flex h-[40px] w-full items-center justify-center gap-2 rounded-[8px] border border-[#2A2A2E] text-[13px] font-bold text-white transition hover:border-[#8D4CFF]"
-          >
-            <Plus size={15} />
-            PPL 추가
-          </button>
-
-          <div className="max-h-[260px] space-y-2 overflow-y-auto pr-1">
-            {pplPartners.length > 0 ? (
-              pplPartners.map((partner) => {
+            ) : isPplTab && pplPartners.length > 0 ? (
+              pplPartners.map((partner, index) => {
                 const isActive = partner.id === editingPplId;
 
                 return (
-                  <button
+                  <div
                     key={partner.id}
-                    type="button"
-                    onClick={() => selectPpl(partner)}
-                    className={`w-full rounded-[8px] border p-3 text-left transition ${
+                    className={`grid grid-cols-[1fr_auto] gap-2 rounded-[8px] border p-3 transition ${
                       isActive
-                        ? "border-[#8D4CFF] bg-[#171122]"
+                        ? "border-[#FF9D71] bg-[#21140F]"
                         : "border-[#222226] bg-[#101012] hover:border-[#4C4B52]"
                     }`}
                   >
-                    <span className="block truncate text-[13px] font-bold text-white">
-                      {partner.name}
-                    </span>
-                    <span className="mt-2 block truncate text-[11px] font-semibold text-[#6E6C76]">
-                      {partner.website_url}
-                    </span>
-                  </button>
+                    <button
+                      type="button"
+                      onClick={() => selectPpl(partner)}
+                      className="min-w-0 text-left"
+                    >
+                      <span className="block truncate text-[13px] font-bold text-white">
+                        {partner.name}
+                      </span>
+                      <span className="mt-2 block truncate text-[11px] font-semibold text-[#6E6C76]">
+                        {partner.website_url}
+                      </span>
+                    </button>
+                    <div className="grid grid-cols-2 gap-1">
+                      <button
+                        type="button"
+                        onClick={() => reorderPpl(partner.id, -1)}
+                        disabled={index === 0}
+                        aria-label={`${partner.name} 위로 이동`}
+                        className="flex size-7 items-center justify-center rounded-[6px] border border-[#303036] text-[#B9B8C0] transition hover:border-[#FF9D71] hover:text-white disabled:opacity-30"
+                      >
+                        <ArrowUp size={14} />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => reorderPpl(partner.id, 1)}
+                        disabled={index === pplPartners.length - 1}
+                        aria-label={`${partner.name} 아래로 이동`}
+                        className="flex size-7 items-center justify-center rounded-[6px] border border-[#303036] text-[#B9B8C0] transition hover:border-[#FF9D71] hover:text-white disabled:opacity-30"
+                      >
+                        <ArrowDown size={14} />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => deletePpl(partner)}
+                        aria-label={`${partner.name} 삭제`}
+                        className="col-span-2 flex h-7 items-center justify-center rounded-[6px] border border-[#303036] text-[#B9B8C0] transition hover:border-[#FF6B6B] hover:text-[#FF9A9A]"
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    </div>
+                  </div>
                 );
               })
             ) : (
               <p className="rounded-[8px] border border-[#222226] bg-[#101012] p-4 text-[13px] text-[#8E8D96]">
-                등록된 PPL 파트너가 없습니다.
+                {activeListItems.length === 0
+                  ? `${activeListLabel} 항목이 없습니다.`
+                  : "비밀번호 확인 후 목록이 표시됩니다."}
               </p>
             )}
           </div>
@@ -504,7 +716,7 @@ export default function AdminWorksForm() {
       </aside>
 
       <div className="space-y-12">
-        <form onSubmit={saveWork} className="space-y-7">
+        <form onSubmit={saveWork} className="space-y-7" hidden={isPplTab}>
           <div className="flex items-start justify-between gap-4 border-b border-[#222226] pb-5">
             <div>
               <p className="text-[12px] font-semibold uppercase tracking-[2px] text-[#8D4CFF]">
@@ -522,7 +734,9 @@ export default function AdminWorksForm() {
             ) : null}
           </div>
 
-          <div className="grid gap-4 md:grid-cols-[1fr_auto]">
+          {tabButtons}
+
+          <div className="hidden">
             <label className="block">
               <span className="text-[13px] font-semibold text-[#9A99A2]">
                 관리자 비밀번호
@@ -542,27 +756,6 @@ export default function AdminWorksForm() {
               <Check size={16} />
               확인
             </button>
-          </div>
-
-          <div className="grid gap-4 md:grid-cols-3">
-            {tabs.map((item) => {
-              const isActive = item === tab;
-
-              return (
-                <button
-                  key={item}
-                  type="button"
-                  onClick={() => setTab(item)}
-                  className={`h-[46px] rounded-[8px] border text-[13px] font-bold uppercase tracking-[1.2px] transition ${
-                    isActive
-                      ? "border-[#8D4CFF] bg-[#8D4CFF] text-white"
-                      : "border-[#2A2A2E] bg-[#101012] text-[#8E8D96] hover:border-[#6E6C76]"
-                  }`}
-                >
-                  {item}
-                </button>
-              );
-            })}
           </div>
 
           <div className="grid gap-4 md:grid-cols-[1fr_auto]">
@@ -697,6 +890,21 @@ export default function AdminWorksForm() {
                 취소
               </button>
             ) : null}
+            {isEditMode ? (
+              <button
+                type="button"
+                onClick={() => {
+                  const work = options.works.find((item) => item.id === editingWorkId);
+                  if (work) {
+                    void deleteWork(work);
+                  }
+                }}
+                className="inline-flex h-[50px] items-center justify-center gap-2 rounded-[8px] border border-[#3A2A2A] px-5 text-[14px] font-bold text-[#FF9A9A] transition hover:border-[#FF6B6B] hover:text-white"
+              >
+                <Trash2 size={16} />
+                삭제
+              </button>
+            ) : null}
             {status ? (
               <p className="text-[13px] font-semibold text-[#9A99A2]">
                 {status}
@@ -705,7 +913,11 @@ export default function AdminWorksForm() {
           </div>
         </form>
 
-        <form onSubmit={savePpl} className="space-y-5 border-t border-[#222226] pt-8">
+        <form
+          onSubmit={savePpl}
+          className="space-y-5 border-t border-[#222226] pt-8"
+          hidden={!isPplTab}
+        >
           <div className="flex items-center justify-between gap-4">
             <div>
               <p className="text-[12px] font-semibold uppercase tracking-[2px] text-[#FF9D71]">
@@ -720,6 +932,8 @@ export default function AdminWorksForm() {
               </span>
             ) : null}
           </div>
+
+          {tabButtons}
 
           <div className="grid gap-4 md:grid-cols-[1fr_auto]">
             <label className="block">
@@ -824,71 +1038,88 @@ export default function AdminWorksForm() {
                 취소
               </button>
             ) : null}
+            {isPplEditMode ? (
+              <button
+                type="button"
+                onClick={() => {
+                  const partner = pplPartners.find((item) => item.id === editingPplId);
+                  if (partner) {
+                    void deletePpl(partner);
+                  }
+                }}
+                className="inline-flex h-[50px] items-center justify-center gap-2 rounded-[8px] border border-[#3A2A2A] px-5 text-[14px] font-bold text-[#FF9A9A] transition hover:border-[#FF6B6B] hover:text-white"
+              >
+                <Trash2 size={16} />
+                삭제
+              </button>
+            ) : null}
           </div>
         </form>
       </div>
 
       <aside className="space-y-4 xl:sticky xl:top-[120px] xl:h-fit">
-        <div className="overflow-hidden rounded-[8px] border border-[#222226] bg-[#101012]">
-          <div
-            className="aspect-video bg-cover bg-center"
-            style={{
-              backgroundImage: metadata?.thumbnailUrl
-                ? `url(${metadata.thumbnailUrl})`
-                : "linear-gradient(116deg,#202026 0%,#151519 42%,#060607 72%,#020203 100%)",
-            }}
-          />
-          <div className="space-y-4 p-5">
-            <div>
-              <p className="text-[11px] font-bold uppercase tracking-[1.5px] text-[#8D4CFF]">
-                Works Preview
-              </p>
-              <h2 className="mt-2 text-[18px] font-bold leading-snug">
-                {metadata?.title ?? "영상 제목"}
-              </h2>
-            </div>
+        {!isPplTab ? (
+          <div className="overflow-hidden rounded-[8px] border border-[#222226] bg-[#101012]">
+            <div
+              className="aspect-video bg-cover bg-center"
+              style={{
+                backgroundImage: metadata?.thumbnailUrl
+                  ? `url(${metadata.thumbnailUrl})`
+                  : "linear-gradient(116deg,#202026 0%,#151519 42%,#060607 72%,#020203 100%)",
+              }}
+            />
+            <div className="space-y-4 p-5">
+              <div>
+                <p className="text-[11px] font-bold uppercase tracking-[1.5px] text-[#8D4CFF]">
+                  Works Preview
+                </p>
+                <h2 className="mt-2 text-[18px] font-bold leading-snug">
+                  {metadata?.title ?? "영상 제목"}
+                </h2>
+              </div>
 
-            <div className="flex items-center gap-3">
-              <div
-                className="size-10 rounded-full bg-cover bg-center"
-                style={{
-                  backgroundImage: metadata?.channelProfileImageUrl
-                    ? `url(${metadata.channelProfileImageUrl})`
-                    : "linear-gradient(135deg,#8D4CFF,#FF9D71)",
-                }}
-              />
-              <div className="min-w-0">
-                <p className="truncate text-[14px] font-bold">
-                  {metadata?.channelName || "채널명"}
-                </p>
-                <p className="mt-1 text-[12px] text-[#6E6C76]">
-                  {metadata?.source ?? "youtube"}
-                </p>
+              <div className="flex items-center gap-3">
+                <div
+                  className="size-10 rounded-full bg-cover bg-center"
+                  style={{
+                    backgroundImage: metadata?.channelProfileImageUrl
+                      ? `url(${metadata.channelProfileImageUrl})`
+                      : "linear-gradient(135deg,#8D4CFF,#FF9D71)",
+                  }}
+                />
+                <div className="min-w-0">
+                  <p className="truncate text-[14px] font-bold">
+                    {metadata?.channelName || "채널명"}
+                  </p>
+                  <p className="mt-1 text-[12px] text-[#6E6C76]">
+                    {metadata?.source ?? "youtube"}
+                  </p>
+                </div>
               </div>
             </div>
           </div>
-        </div>
-
-        <div className="overflow-hidden rounded-[8px] border border-[#222226] bg-[#101012] p-5">
-          <p className="text-[11px] font-bold uppercase tracking-[1.5px] text-[#FF9D71]">
-            PPL Preview
-          </p>
-          <div className="mt-4 flex h-[82px] items-center justify-center rounded-[8px] bg-[#17171A] px-5">
-            {pplLogoUrl || pplMetadata?.logoUrl ? (
-              <span
-                aria-hidden="true"
-                className="block h-[58%] w-full bg-contain bg-center bg-no-repeat"
-                style={{
-                  backgroundImage: `url(${pplLogoUrl || pplMetadata?.logoUrl})`,
-                }}
-              />
-            ) : (
-              <span className="truncate text-[13px] font-bold text-[#A7A6AE]">
-                {pplName || "PPL 로고"}
-              </span>
-            )}
+        ) : (
+          <div className="overflow-hidden rounded-[8px] border border-[#222226] bg-[#101012] p-5">
+            <p className="text-[11px] font-bold uppercase tracking-[1.5px] text-[#FF9D71]">
+              PPL Preview
+            </p>
+            <div className="mt-4 flex h-[82px] items-center justify-center rounded-[8px] bg-[#17171A] px-5">
+              {pplLogoUrl || pplMetadata?.logoUrl ? (
+                <span
+                  aria-hidden="true"
+                  className="block h-[58%] w-full bg-contain bg-center bg-no-repeat"
+                  style={{
+                    backgroundImage: `url(${pplLogoUrl || pplMetadata?.logoUrl})`,
+                  }}
+                />
+              ) : (
+                <span className="truncate text-[13px] font-bold text-[#A7A6AE]">
+                  {pplName || "PPL 로고"}
+                </span>
+              )}
+            </div>
           </div>
-        </div>
+        )}
 
         <a
           href="/work"

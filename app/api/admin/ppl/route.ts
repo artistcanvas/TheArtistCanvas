@@ -1,9 +1,12 @@
 import { revalidatePath } from "next/cache";
 import { getSiteMetadata } from "../../../_lib/siteMetadata";
+import { assertAdmin } from "../_lib/auth";
 
 type PplRequestBody = {
   password?: unknown;
+  action?: unknown;
   id?: unknown;
+  ids?: unknown;
   name?: unknown;
   websiteUrl?: unknown;
   logoUrl?: unknown;
@@ -22,28 +25,9 @@ type PplPartnerRow = {
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-const adminPassword = process.env.ADMIN_PASSWORD;
 
-function assertAdmin(body?: PplRequestBody) {
-  if (!adminPassword) {
-    return Response.json(
-      { error: "ADMIN_PASSWORD is not configured." },
-      { status: 500 }
-    );
-  }
-
-  if (body?.password !== adminPassword) {
-    return Response.json({ error: "Unauthorized." }, { status: 401 });
-  }
-
-  if (!supabaseUrl || !serviceRoleKey) {
-    return Response.json(
-      { error: "Supabase admin environment variables are not configured." },
-      { status: 500 }
-    );
-  }
-
-  return null;
+function isStringArray(value: unknown): value is string[] {
+  return Array.isArray(value) && value.every((item) => typeof item === "string");
 }
 
 async function supabaseRequest<T>(path: string, init: RequestInit = {}) {
@@ -122,8 +106,7 @@ async function buildPayload(body: PplRequestBody) {
 }
 
 export async function GET(request: Request) {
-  const password = request.headers.get("x-admin-password");
-  const adminError = assertAdmin({ password });
+  const adminError = await assertAdmin(request);
 
   if (adminError) {
     return adminError;
@@ -153,7 +136,7 @@ export async function POST(request: Request) {
     return Response.json({ error: "Invalid JSON body." }, { status: 400 });
   }
 
-  const adminError = assertAdmin(body);
+  const adminError = await assertAdmin(request, body);
 
   if (adminError) {
     return adminError;
@@ -192,10 +175,51 @@ export async function PATCH(request: Request) {
     return Response.json({ error: "Invalid JSON body." }, { status: 400 });
   }
 
-  const adminError = assertAdmin(body);
+  const adminError = await assertAdmin(request, body);
 
   if (adminError) {
     return adminError;
+  }
+
+  if (body.action === "reorder") {
+    if (!isStringArray(body.ids)) {
+      return Response.json(
+        { error: "Partner ids are required." },
+        { status: 400 }
+      );
+    }
+
+    try {
+      await Promise.all(
+        body.ids.map((id, index) =>
+          supabaseRequest<PplPartnerRow[]>(
+            `/rest/v1/ppl_partners?id=eq.${id}`,
+            {
+              method: "PATCH",
+              headers: {
+                Prefer: "return=representation",
+              },
+              body: JSON.stringify({
+                sort_order: index,
+                updated_at: new Date().toISOString(),
+              }),
+            }
+          )
+        )
+      );
+
+      revalidatePath("/work");
+
+      return Response.json({ ok: true });
+    } catch (error) {
+      return Response.json(
+        {
+          error:
+            error instanceof Error ? error.message : "Could not reorder partners.",
+        },
+        { status: 500 }
+      );
+    }
   }
 
   if (typeof body.id !== "string" || !body.id.trim()) {
@@ -223,6 +247,48 @@ export async function PATCH(request: Request) {
       {
         error:
           error instanceof Error ? error.message : "Could not update partner.",
+      },
+      { status: 500 }
+    );
+  }
+}
+
+export async function DELETE(request: Request) {
+  const body = await readBody(request);
+
+  if (!body) {
+    return Response.json({ error: "Invalid JSON body." }, { status: 400 });
+  }
+
+  const adminError = await assertAdmin(request, body);
+
+  if (adminError) {
+    return adminError;
+  }
+
+  if (typeof body.id !== "string" || !body.id.trim()) {
+    return Response.json({ error: "Partner id is required." }, { status: 400 });
+  }
+
+  try {
+    const rows = await supabaseRequest<PplPartnerRow[]>(
+      `/rest/v1/ppl_partners?id=eq.${body.id}`,
+      {
+        method: "DELETE",
+        headers: {
+          Prefer: "return=representation",
+        },
+      }
+    );
+
+    revalidatePath("/work");
+
+    return Response.json({ partner: rows[0] });
+  } catch (error) {
+    return Response.json(
+      {
+        error:
+          error instanceof Error ? error.message : "Could not delete partner.",
       },
       { status: 500 }
     );

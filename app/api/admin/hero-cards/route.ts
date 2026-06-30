@@ -1,5 +1,6 @@
 import { revalidatePath } from "next/cache";
 import { getYouTubeMetadata } from "../../../_lib/youtube";
+import { assertAdmin } from "../_lib/auth";
 
 type AdminHeroCardRequestBody = {
   password?: unknown;
@@ -22,33 +23,6 @@ type SupabaseAdminHeroCardRow = {
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-const adminPassword = process.env.ADMIN_PASSWORD;
-
-function getAdminPassword(request: Request, body?: AdminHeroCardRequestBody) {
-  return request.headers.get("x-admin-password") ?? body?.password;
-}
-
-function assertAdmin(request: Request, body?: AdminHeroCardRequestBody) {
-  if (!adminPassword) {
-    return Response.json(
-      { error: "ADMIN_PASSWORD is not configured." },
-      { status: 500 }
-    );
-  }
-
-  if (getAdminPassword(request, body) !== adminPassword) {
-    return Response.json({ error: "Unauthorized." }, { status: 401 });
-  }
-
-  if (!supabaseUrl || !serviceRoleKey) {
-    return Response.json(
-      { error: "Supabase admin environment variables are not configured." },
-      { status: 500 }
-    );
-  }
-
-  return null;
-}
 
 async function supabaseRequest<T>(
   path: string,
@@ -86,7 +60,7 @@ function parsePosition(value: unknown) {
 }
 
 export async function GET(request: Request) {
-  const adminError = assertAdmin(request);
+  const adminError = await assertAdmin(request);
 
   if (adminError) {
     return adminError;
@@ -120,7 +94,7 @@ export async function POST(request: Request) {
     return Response.json({ error: "Invalid JSON body." }, { status: 400 });
   }
 
-  const adminError = assertAdmin(request, body);
+  const adminError = await assertAdmin(request, body);
 
   if (adminError) {
     return adminError;

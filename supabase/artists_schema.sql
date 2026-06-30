@@ -5,10 +5,13 @@ values ('artist-images', 'artist-images', true)
 on conflict (id) do update set public = excluded.public;
 
 do $$ begin
-  create type public.artist_role as enum ('CREATOR', 'SINGER', 'ACTOR');
+  create type public.artist_role as enum ('WITH', 'MCN');
 exception
   when duplicate_object then null;
 end $$;
+
+alter type public.artist_role add value if not exists 'WITH';
+alter type public.artist_role add value if not exists 'MCN';
 
 create table if not exists public.artist_profiles (
   id uuid primary key default gen_random_uuid(),

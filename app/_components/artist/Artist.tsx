@@ -3,14 +3,17 @@
 import { useMemo, useState } from "react";
 import SectionHeading from "../layout/SectionHeading";
 import ArtistCard from "./ArtistCard";
+import ArtistVideoCard from "./ArtistVideoCard";
 import { fallbackArtistsData } from "./artistFallbackData";
 
-export type ArtistTab = "CREATOR" | "SINGER" | "ACTOR";
+export type ArtistTab = "WITH" | "MCN";
+export type LegacyArtistRole = "CREATOR" | "SINGER" | "ACTOR";
+export type ArtistRole = ArtistTab | LegacyArtistRole;
 
 export type ArtistProfile = {
   id?: string;
   name: string;
-  role: ArtistTab;
+  role: ArtistRole;
   profileImageUrl?: string | null;
   birthDate?: string;
   height?: string;
@@ -20,16 +23,19 @@ export type ArtistProfile = {
   isFeatured?: boolean;
 };
 
-const tabs: ArtistTab[] = ["CREATOR", "SINGER", "ACTOR"];
+const tabs: ArtistTab[] = ["WITH", "MCN"];
 
 export default function Artist({
   artistsData = fallbackArtistsData,
 }: {
   artistsData?: Record<ArtistTab, ArtistProfile[]>;
 }) {
-  const [activeTab, setActiveTab] = useState<ArtistTab>("CREATOR");
-  const artists = useMemo(() => artistsData[activeTab], [activeTab, artistsData]);
-  const artistCountLabel = `${artists.length} ${activeTab}S`;
+  const [activeTab, setActiveTab] = useState<ArtistTab>("WITH");
+  const artists = useMemo(
+    () => artistsData[activeTab],
+    [activeTab, artistsData],
+  );
+  const artistCountLabel = `${artists.length} ${activeTab}`;
 
   return (
     <div className="mx-auto w-full max-w-[1920px] px-5 md:px-[clamp(20px,calc((170/1920)*100vw),170px)]">
@@ -37,9 +43,9 @@ export default function Artist({
         title="ARTIST"
         des={
           <>
-            아티스트커버스와 함께하는 크리에이터, 가수,
+            아티스트캔버스와 함께한
             <br />
-            배우들을 소개합니다.
+            크리에이터, 가수, 배우들을 소개합니다.
           </>
         }
       />
@@ -86,12 +92,15 @@ export default function Artist({
         </p>
 
         <div className="mt-[12px] grid grid-cols-1 gap-[10px] md:mt-[35px] md:grid-cols-2 md:gap-x-[36px] md:gap-y-[38px] xl:grid-cols-4">
-          {artists.map((artist, index) => (
-            <ArtistCard
-              key={artist.id ?? `${artist.role}-${artist.name}-${index}`}
-              artist={artist}
-            />
-          ))}
+          {artists.map((artist, index) => {
+            const key = artist.id ?? `${artist.role}-${artist.name}-${index}`;
+
+            return activeTab === "WITH" ? (
+              <ArtistVideoCard key={key} artist={artist} />
+            ) : (
+              <ArtistCard key={key} artist={artist} />
+            );
+          })}
         </div>
       </div>
     </div>

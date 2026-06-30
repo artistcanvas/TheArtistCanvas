@@ -65,6 +65,13 @@ create table if not exists public.ppl_partners (
   )
 );
 
+create table if not exists public.admin_settings (
+  key text primary key,
+  value text not null,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
 drop view if exists public.original_works;
 drop view if exists public.brand_ppl_works;
 drop view if exists public.project_works;
@@ -119,6 +126,7 @@ alter table public.work_categories enable row level security;
 alter table public.work_types enable row level security;
 alter table public.works enable row level security;
 alter table public.ppl_partners enable row level security;
+alter table public.admin_settings enable row level security;
 
 drop policy if exists "Public can read work categories" on public.work_categories;
 create policy "Public can read work categories"

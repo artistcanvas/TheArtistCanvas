@@ -1,4 +1,5 @@
 export type WorkTab = "Original" | "Brand & ppl" | "Project";
+export type WorkViewTab = WorkTab | "PPL";
 
 export type WorkCategory = {
   id: string;
@@ -34,4 +35,18 @@ export type WorksData = Record<
   pplPartners: PplPartner[];
 };
 
-export const workTabs: WorkTab[] = ["Original", "Brand & ppl", "Project"];
+export const workTabs: WorkViewTab[] = [
+  "Original",
+  "Brand & ppl",
+  "Project",
+  "PPL",
+];
+
+export const workDataTabs: WorkTab[] = ["Original", "Brand & ppl", "Project"];
+
+export const workTabLabels: Record<WorkViewTab, string> = {
+  Original: "자체 채널",
+  "Brand & ppl": "브랜드 채널",
+  Project: "프로젝트",
+  PPL: "PPL",
+};

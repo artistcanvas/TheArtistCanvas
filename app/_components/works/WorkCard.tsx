@@ -67,11 +67,11 @@ export default function WorkCard({ work }: { work: Work }) {
   }, [isModalOpen]);
 
   const cardClassName =
-    "group block w-full overflow-hidden rounded-[8px] bg-[#111113] text-left transition-colors duration-300";
+    "group flex h-full w-full flex-col overflow-hidden rounded-[8px] bg-[#111113] p-0 text-left transition-colors duration-300";
 
   const cardContent = (
     <>
-      <div className="relative aspect-[335/190] overflow-hidden bg-[#0B0B0D] md:aspect-[302/168]">
+      <div className="relative aspect-video overflow-hidden bg-[#0B0B0D]">
         {work.thumbnailUrl ? (
           <div
             aria-hidden="true"
@@ -93,11 +93,14 @@ export default function WorkCard({ work }: { work: Work }) {
           <h3 className="truncate text-[clamp(14px,calc((16/1920)*100vw),16px)] font-semibold leading-tight text-white md:text-[12px]">
             {work.title}
           </h3>
-          {work.description ? (
-            <p className="mt-[5.6px] truncate text-[12px] font-medium leading-none tracking-[1.1px] text-[#5B5A62] md:text-[11px]">
-              {work.description}
-            </p>
-          ) : null}
+          <p
+            aria-hidden={work.description ? undefined : "true"}
+            className={`mt-[5.6px] truncate text-[12px] font-medium leading-none tracking-[1.1px] text-[#5B5A62] md:text-[11px] ${
+              work.description ? "" : "invisible"
+            }`}
+          >
+            {work.description ?? "Description"}
+          </p>
         </div>
 
         <span
