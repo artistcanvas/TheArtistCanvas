@@ -16,6 +16,8 @@ type SupabaseArtistRow = {
   youtube_url: string | null;
   careers: string[] | null;
   is_featured: boolean;
+  sort_order: number;
+  created_at: string;
 };
 
 const artistTabs: ArtistTab[] = ["WITH", "MCN"];
@@ -36,7 +38,22 @@ function formatBirthDate(value: string | null) {
 function mapRowsToArtistsData(rows: SupabaseArtistRow[]) {
   const artistsData = emptyArtistsData();
 
-  rows.forEach((row) => {
+  [...rows]
+    .sort((a, b) => {
+      const tabA = a.role === "MCN" ? "MCN" : "WITH";
+      const tabB = b.role === "MCN" ? "MCN" : "WITH";
+
+      if (tabA !== tabB) {
+        return artistTabs.indexOf(tabA) - artistTabs.indexOf(tabB);
+      }
+
+      if (a.sort_order !== b.sort_order) {
+        return a.sort_order - b.sort_order;
+      }
+
+      return Date.parse(b.created_at) - Date.parse(a.created_at);
+    })
+    .forEach((row) => {
     const tab: ArtistTab = row.role === "MCN" ? "MCN" : "WITH";
 
     artistsData[tab].push({
@@ -64,7 +81,7 @@ export async function getArtistsData(): Promise<Record<ArtistTab, ArtistProfile[
   const artistUrl = new URL("/rest/v1/artist_profiles", supabaseUrl);
   artistUrl.searchParams.set(
     "select",
-    "id,role,name,profile_image_url,birth_date,height_cm,education,youtube_url,careers,is_featured"
+    "id,role,name,profile_image_url,birth_date,height_cm,education,youtube_url,careers,is_featured,sort_order,created_at"
   );
   artistUrl.searchParams.set("is_published", "eq.true");
   artistUrl.searchParams.set("order", "role.asc,sort_order.asc,created_at.desc");

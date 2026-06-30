@@ -194,12 +194,25 @@ export async function GET(request: Request) {
     const artists = await supabaseRequest<ArtistRow[]>(
       "/rest/v1/artist_profiles?select=id,role,name,profile_image_url,birth_date,height_cm,education,youtube_url,careers,is_featured,is_published,sort_order,created_at&order=role.asc,sort_order.asc,created_at.desc"
     );
-
-    return Response.json({
-      artists: artists.map((artist) => ({
+    const normalizedArtists = artists
+      .map((artist) => ({
         ...artist,
         role: normalizeArtistRole(artist.role),
-      })),
+      }))
+      .sort((a, b) => {
+        if (a.role !== b.role) {
+          return artistTabs.indexOf(a.role) - artistTabs.indexOf(b.role);
+        }
+
+        if (a.sort_order !== b.sort_order) {
+          return a.sort_order - b.sort_order;
+        }
+
+        return Date.parse(b.created_at) - Date.parse(a.created_at);
+      });
+
+    return Response.json({
+      artists: normalizedArtists,
     });
   } catch (error) {
     return Response.json(

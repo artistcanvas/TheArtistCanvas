@@ -279,7 +279,7 @@ export default function AdminArtistsForm({
   };
 
   return (
-    <section className="mx-auto grid w-full max-w-[1280px] gap-8 border-t border-[#222226] pt-12 xl:grid-cols-[280px_minmax(0,1fr)_360px]">
+    <section className="mx-auto grid w-full max-w-[1280px] gap-8 xl:grid-cols-[280px_minmax(0,1fr)_360px]">
       <aside className="space-y-4 xl:sticky xl:top-[120px] xl:h-fit">
         <div className="border-b border-[#222226] pb-4">
           <p className="text-[12px] font-semibold uppercase tracking-[2px] text-[#8D4CFF]">

@@ -1,6 +1,17 @@
 "use client";
 
-import { Check, Loader2, Mail, Pencil, Plus, Save, X } from "lucide-react";
+import {
+  ArrowDown,
+  ArrowUp,
+  Check,
+  Loader2,
+  Mail,
+  Pencil,
+  Plus,
+  Save,
+  Trash2,
+  X,
+} from "lucide-react";
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import type { ContactInquiryType } from "../_lib/contact";
 import { contactSections } from "../_lib/contact";
@@ -137,8 +148,69 @@ export default function AdminContactForm({
     }
   };
 
+  const reorderEmails = async (emailId: string, direction: -1 | 1) => {
+    const currentIndex = filteredEmails.findIndex((item) => item.id === emailId);
+    const nextIndex = currentIndex + direction;
+
+    if (currentIndex < 0 || nextIndex < 0 || nextIndex >= filteredEmails.length) {
+      return;
+    }
+
+    const nextEmails = [...filteredEmails];
+    [nextEmails[currentIndex], nextEmails[nextIndex]] = [
+      nextEmails[nextIndex],
+      nextEmails[currentIndex],
+    ];
+
+    setStatus("Contact 이메일 순서를 저장하는 중입니다.");
+
+    const response = await fetch("/api/admin/contact", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        action: "reorder",
+        password,
+        ids: nextEmails.map((item) => item.id),
+      }),
+    });
+    const data = await response.json();
+
+    if (!response.ok) {
+      setStatus(data.error ?? "Contact 이메일 순서를 저장하지 못했습니다.");
+      return;
+    }
+
+    await loadEmails(password);
+    setStatus("Contact 이메일 순서를 저장했습니다.");
+  };
+
+  const deleteEmail = async (item: AdminContactEmail) => {
+    if (!window.confirm(`"${item.email}" 이메일을 삭제할까요?`)) {
+      return;
+    }
+
+    const response = await fetch("/api/admin/contact", {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ password, id: item.id }),
+    });
+    const data = await response.json();
+
+    if (!response.ok) {
+      setStatus(data.error ?? "Contact 이메일을 삭제하지 못했습니다.");
+      return;
+    }
+
+    if (editingEmailId === item.id) {
+      resetForm();
+    }
+
+    await loadEmails(password);
+    setStatus("Contact 이메일을 삭제했습니다.");
+  };
+
   return (
-    <section className="mx-auto grid w-full max-w-[1280px] gap-8 border-t border-[#222226] pt-12 xl:grid-cols-[280px_minmax(0,1fr)_360px]">
+    <section className="mx-auto grid w-full max-w-[1280px] gap-8 xl:grid-cols-[280px_minmax(0,1fr)_360px]">
       <aside className="space-y-4 xl:sticky xl:top-[120px] xl:h-fit">
         <div className="border-b border-[#222226] pb-4">
           <p className="text-[12px] font-semibold uppercase tracking-[2px] text-[#8D4CFF]">
@@ -161,28 +233,59 @@ export default function AdminContactForm({
 
         <div className="max-h-[420px] space-y-2 overflow-y-auto pr-1">
           {filteredEmails.length > 0 ? (
-            filteredEmails.map((item) => {
+            filteredEmails.map((item, index) => {
               const isActive = item.id === editingEmailId;
 
               return (
-                <button
+                <div
                   key={item.id}
-                  type="button"
-                  onClick={() => selectEmail(item)}
-                  className={`w-full rounded-[8px] border p-3 text-left transition ${
+                  className={`grid grid-cols-[1fr_auto] gap-2 rounded-[8px] border p-3 transition ${
                     isActive
                       ? "border-[#8D4CFF] bg-[#171122]"
                       : "border-[#222226] bg-[#101012] hover:border-[#4C4B52]"
                   }`}
                 >
-                  <span className="block truncate text-[13px] font-bold text-white">
-                    {item.email}
-                  </span>
-                  <span className="mt-2 flex items-center justify-between gap-2 text-[11px] font-semibold text-[#6E6C76]">
-                    <span>sort {item.sort_order}</span>
-                    <span>{item.is_published ? "공개" : "비공개"}</span>
-                  </span>
-                </button>
+                  <button
+                    type="button"
+                    onClick={() => selectEmail(item)}
+                    className="min-w-0 text-left"
+                  >
+                    <span className="block truncate text-[13px] font-bold text-white">
+                      {item.email}
+                    </span>
+                    <span className="mt-2 block text-[11px] font-semibold text-[#6E6C76]">
+                      {item.is_published ? "공개" : "비공개"}
+                    </span>
+                  </button>
+                  <div className="grid grid-cols-2 gap-1">
+                    <button
+                      type="button"
+                      onClick={() => reorderEmails(item.id, -1)}
+                      disabled={index === 0}
+                      aria-label={`${item.email} 위로 이동`}
+                      className="flex size-7 items-center justify-center rounded-[6px] border border-[#303036] text-[#B9B8C0] transition hover:border-[#8D4CFF] hover:text-white disabled:opacity-30"
+                    >
+                      <ArrowUp size={14} />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => reorderEmails(item.id, 1)}
+                      disabled={index === filteredEmails.length - 1}
+                      aria-label={`${item.email} 아래로 이동`}
+                      className="flex size-7 items-center justify-center rounded-[6px] border border-[#303036] text-[#B9B8C0] transition hover:border-[#8D4CFF] hover:text-white disabled:opacity-30"
+                    >
+                      <ArrowDown size={14} />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => deleteEmail(item)}
+                      aria-label={`${item.email} 삭제`}
+                      className="col-span-2 flex h-7 items-center justify-center rounded-[6px] border border-[#303036] text-[#B9B8C0] transition hover:border-[#FF6B6B] hover:text-[#FF9A9A]"
+                    >
+                      <Trash2 size={14} />
+                    </button>
+                  </div>
+                </div>
               );
             })
           ) : (

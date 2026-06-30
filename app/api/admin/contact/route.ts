@@ -4,7 +4,9 @@ import { assertAdmin } from "../_lib/auth";
 
 type ContactRequestBody = {
   password?: unknown;
+  action?: unknown;
   id?: unknown;
+  ids?: unknown;
   inquiryType?: unknown;
   email?: unknown;
   isPublished?: unknown;
@@ -35,6 +37,10 @@ function isInquiryType(value: unknown): value is ContactInquiryType {
     typeof value === "string" &&
     inquiryTypes.includes(value as ContactInquiryType)
   );
+}
+
+function isStringArray(value: unknown): value is string[] {
+  return Array.isArray(value) && value.every((item) => typeof item === "string");
 }
 
 async function supabaseRequest<T>(
@@ -186,6 +192,49 @@ export async function PATCH(request: Request) {
     return adminError;
   }
 
+  if (body.action === "reorder") {
+    if (!isStringArray(body.ids)) {
+      return Response.json(
+        { error: "Contact email ids are required." },
+        { status: 400 }
+      );
+    }
+
+    try {
+      await Promise.all(
+        body.ids.map((id, index) =>
+          supabaseRequest(
+            `/rest/v1/contact_emails?id=eq.${encodeURIComponent(id)}`,
+            {
+              method: "PATCH",
+              headers: {
+                Prefer: "return=representation",
+              },
+              body: JSON.stringify({
+                sort_order: index,
+                updated_at: new Date().toISOString(),
+              }),
+            }
+          )
+        )
+      );
+
+      revalidatePath("/contact");
+
+      return Response.json({ ok: true });
+    } catch (error) {
+      return Response.json(
+        {
+          error:
+            error instanceof Error
+              ? error.message
+              : "Could not reorder contacts.",
+        },
+        { status: 500 }
+      );
+    }
+  }
+
   if (typeof body.id !== "string" || !body.id.trim()) {
     return Response.json({ error: "Contact email id is required." }, { status: 400 });
   }
@@ -210,6 +259,51 @@ export async function PATCH(request: Request) {
       {
         error:
           error instanceof Error ? error.message : "Could not update contact.",
+      },
+      { status: 500 }
+    );
+  }
+}
+
+export async function DELETE(request: Request) {
+  const body = await readBody(request);
+
+  if (!body) {
+    return Response.json({ error: "Invalid JSON body." }, { status: 400 });
+  }
+
+  const adminError = await assertAdmin(request, body);
+
+  if (adminError) {
+    return adminError;
+  }
+
+  if (typeof body.id !== "string" || !body.id.trim()) {
+    return Response.json(
+      { error: "Contact email id is required." },
+      { status: 400 }
+    );
+  }
+
+  try {
+    const rows = await supabaseRequest(
+      `/rest/v1/contact_emails?id=eq.${encodeURIComponent(body.id)}`,
+      {
+        method: "DELETE",
+        headers: {
+          Prefer: "return=representation",
+        },
+      }
+    );
+
+    revalidatePath("/contact");
+
+    return Response.json({ email: Array.isArray(rows) ? rows[0] : rows });
+  } catch (error) {
+    return Response.json(
+      {
+        error:
+          error instanceof Error ? error.message : "Could not delete contact.",
       },
       { status: 500 }
     );
