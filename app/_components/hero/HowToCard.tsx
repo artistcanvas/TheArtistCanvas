@@ -53,7 +53,7 @@ export default function HowToCard({ cards, shouldReveal }: HowToCardProps) {
   const [activeCard, setActiveCard] = useState<HeroVideoCard | null>(null);
   const visibleCards = useMemo(
     () => cards.slice(0, 3).sort((a, b) => a.position - b.position),
-    [cards]
+    [cards],
   );
   const embedUrl = useMemo(() => {
     if (!activeCard) {
@@ -62,7 +62,9 @@ export default function HowToCard({ cards, shouldReveal }: HowToCardProps) {
 
     const videoId = getYouTubeVideoId(activeCard.youtubeUrl);
 
-    return videoId ? `https://www.youtube.com/embed/${videoId}?autoplay=1&rel=0` : null;
+    return videoId
+      ? `https://www.youtube.com/embed/${videoId}?autoplay=1&rel=0`
+      : null;
   }, [activeCard]);
 
   useEffect(() => {
@@ -112,8 +114,7 @@ export default function HowToCard({ cards, shouldReveal }: HowToCardProps) {
     };
   }, [activeCard]);
 
-  const mobileCardHeight =
-    (cardWidth / MOBILE_CARD_WIDTH) * MOBILE_CARD_HEIGHT;
+  const mobileCardHeight = (cardWidth / MOBILE_CARD_WIDTH) * MOBILE_CARD_HEIGHT;
   const mobileCardStep = mobileCardHeight + MOBILE_CARD_GAP;
   const mobileStackHeight =
     mobileCardHeight * visibleCards.length +
@@ -134,7 +135,7 @@ export default function HowToCard({ cards, shouldReveal }: HowToCardProps) {
           initial="hidden"
           animate={shouldShowCards ? "show" : "hidden"}
           style={{ height: isDesktop ? undefined : mobileStackHeight }}
-          className="relative w-full md:aspect-[523/894] md:max-w-[523px]"
+          className="relative w-full md:aspect-[523/894] md:max-w-[475px]"
         >
           {visibleCards.map((card, index) => (
             <motion.div
@@ -174,7 +175,12 @@ export default function HowToCard({ cards, shouldReveal }: HowToCardProps) {
                 <span className="absolute inset-0 bg-[linear-gradient(180deg,rgba(0,0,0,0.08)_0%,rgba(0,0,0,0.64)_100%)] opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
                 <span className="absolute inset-0 bg-black/35 opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
                 <span className="absolute left-1/2 top-1/2 inline-flex h-[39px] -translate-x-1/2 -translate-y-1/2 items-center gap-2 rounded-full border border-white/45 bg-white/20 px-5 text-[13px] font-medium text-white opacity-0 shadow-[0_12px_36px_rgba(0,0,0,0.28)] backdrop-blur-md transition duration-300 group-hover:opacity-100 group-focus-visible:opacity-100">
-                  <Play aria-hidden="true" size={14} fill="currentColor" strokeWidth={0} />
+                  <Play
+                    aria-hidden="true"
+                    size={14}
+                    fill="currentColor"
+                    strokeWidth={0}
+                  />
                   지금 재생하기
                 </span>
               </button>
