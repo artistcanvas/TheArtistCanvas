@@ -4,7 +4,7 @@ import { animate, motion, useMotionValue, useTransform } from "framer-motion";
 import { useEffect, useRef } from "react";
 import { HOW_TO_QUOTE_PLAY_EVENT } from "./landingScrollEvents";
 
-const QUOTE_REVEAL_DURATION = 1.25;
+const QUOTE_REVEAL_DURATION = 3;
 
 const getRevealGradient = (value: number) => {
   if (value <= 0) {
