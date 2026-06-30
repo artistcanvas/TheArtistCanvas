@@ -1,6 +1,17 @@
 "use client";
 
-import { Check, Loader2, Pencil, Plus, Save, Upload, X } from "lucide-react";
+import {
+  ArrowDown,
+  ArrowUp,
+  Check,
+  Loader2,
+  Pencil,
+  Plus,
+  Save,
+  Trash2,
+  Upload,
+  X,
+} from "lucide-react";
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import type { ArtistTab } from "../_components/artist/Artist";
 
@@ -41,7 +52,6 @@ export default function AdminArtistsForm({
   const [youtubeUrl, setYoutubeUrl] = useState("");
   const [careers, setCareers] = useState("");
   const [sortOrder, setSortOrder] = useState("0");
-  const [isFeatured, setIsFeatured] = useState(false);
   const [isPublished, setIsPublished] = useState(true);
   const [status, setStatus] = useState("");
   const [isSaving, setIsSaving] = useState(false);
@@ -54,10 +64,11 @@ export default function AdminArtistsForm({
     () => artists.filter((artist) => artist.role === role),
     [artists, role]
   );
+  const activeListLabel = role === "WITH" ? "등록된 With" : "등록된 MCN";
 
-  const resetForm = () => {
+  const resetForm = (nextRole: ArtistTab = "WITH") => {
     setEditingArtistId(null);
-    setRole("WITH");
+    setRole(nextRole);
     setName("");
     setProfileImageUrl("");
     setBirthDate("");
@@ -66,9 +77,12 @@ export default function AdminArtistsForm({
     setYoutubeUrl("");
     setCareers("");
     setSortOrder("0");
-    setIsFeatured(false);
     setIsPublished(true);
     setStatus("새 Artist 추가 모드입니다.");
+  };
+
+  const switchRole = (nextRole: ArtistTab) => {
+    resetForm(nextRole);
   };
 
   const loadArtists = async (adminPassword = password) => {
@@ -113,7 +127,6 @@ export default function AdminArtistsForm({
     setYoutubeUrl(artist.youtube_url ?? "");
     setCareers(artist.careers.join("\n"));
     setSortOrder(artist.sort_order.toString());
-    setIsFeatured(artist.is_featured);
     setIsPublished(artist.is_published);
     setStatus("수정할 Artist를 불러왔습니다.");
   };
@@ -148,8 +161,8 @@ export default function AdminArtistsForm({
         education: isWithArtist ? "" : education,
         youtubeUrl,
         careers: isWithArtist ? "" : careers,
-        sortOrder,
-        isFeatured: isWithArtist ? false : isFeatured,
+        sortOrder: isWithArtist && !isEditMode ? filteredArtists.length : sortOrder,
+        isFeatured: false,
         isPublished,
       }),
     });
@@ -166,7 +179,7 @@ export default function AdminArtistsForm({
     await loadArtists(password);
 
     if (!isEditMode) {
-      resetForm();
+      resetForm(role);
     }
   };
 
@@ -204,6 +217,67 @@ export default function AdminArtistsForm({
     setStatus("이미지를 업로드했습니다.");
   };
 
+  const reorderArtists = async (artistId: string, direction: -1 | 1) => {
+    const currentIndex = filteredArtists.findIndex((artist) => artist.id === artistId);
+    const nextIndex = currentIndex + direction;
+
+    if (currentIndex < 0 || nextIndex < 0 || nextIndex >= filteredArtists.length) {
+      return;
+    }
+
+    const nextArtists = [...filteredArtists];
+    [nextArtists[currentIndex], nextArtists[nextIndex]] = [
+      nextArtists[nextIndex],
+      nextArtists[currentIndex],
+    ];
+
+    setStatus("Artist 순서를 저장하는 중입니다.");
+
+    const response = await fetch("/api/admin/artists", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        action: "reorder",
+        password,
+        ids: nextArtists.map((artist) => artist.id),
+      }),
+    });
+    const data = await response.json();
+
+    if (!response.ok) {
+      setStatus(data.error ?? "Artist 순서를 저장하지 못했습니다.");
+      return;
+    }
+
+    await loadArtists(password);
+    setStatus("Artist 순서를 저장했습니다.");
+  };
+
+  const deleteArtist = async (artist: AdminArtist) => {
+    if (!window.confirm(`"${artist.name}" Artist를 삭제할까요?`)) {
+      return;
+    }
+
+    const response = await fetch("/api/admin/artists", {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ password, id: artist.id }),
+    });
+    const data = await response.json();
+
+    if (!response.ok) {
+      setStatus(data.error ?? "Artist를 삭제하지 못했습니다.");
+      return;
+    }
+
+    if (editingArtistId === artist.id) {
+      resetForm(role);
+    }
+
+    await loadArtists(password);
+    setStatus("Artist를 삭제했습니다.");
+  };
+
   return (
     <section className="mx-auto grid w-full max-w-[1280px] gap-8 border-t border-[#222226] pt-12 xl:grid-cols-[280px_minmax(0,1fr)_360px]">
       <aside className="space-y-4 xl:sticky xl:top-[120px] xl:h-fit">
@@ -211,50 +285,80 @@ export default function AdminArtistsForm({
           <p className="text-[12px] font-semibold uppercase tracking-[2px] text-[#8D4CFF]">
             Artist
           </p>
-          <h2 className="mt-2 text-[20px] font-bold">등록된 Artist</h2>
-          <p className="mt-2 text-[11px] font-bold uppercase tracking-[1.4px] text-[#6E6C76]">
-            {role}
-          </p>
+          <h2 className="mt-2 text-[20px] font-bold">{activeListLabel}</h2>
         </div>
 
         <button
           type="button"
-          onClick={resetForm}
+          onClick={() => resetForm(role)}
           className="inline-flex h-[40px] w-full items-center justify-center gap-2 rounded-[8px] border border-[#2A2A2E] text-[13px] font-bold text-white transition hover:border-[#8D4CFF]"
         >
           <Plus size={15} />
-          Artist 추가
+          {role === "WITH" ? "With 추가" : "MCN 추가"}
         </button>
 
         <div className="max-h-[360px] space-y-2 overflow-y-auto pr-1">
           {filteredArtists.length > 0 ? (
-            filteredArtists.map((artist) => {
+            filteredArtists.map((artist, index) => {
               const isActive = artist.id === editingArtistId;
 
               return (
-                <button
+                <div
                   key={artist.id}
-                  type="button"
-                  onClick={() => selectArtist(artist)}
                   className={`w-full rounded-[8px] border p-3 text-left transition ${
                     isActive
                       ? "border-[#8D4CFF] bg-[#171122]"
                       : "border-[#222226] bg-[#101012] hover:border-[#4C4B52]"
                   }`}
                 >
-                  <span className="block truncate text-[13px] font-bold text-white">
-                    {artist.name}
-                  </span>
-                  <span className="mt-2 flex items-center justify-between gap-2 text-[11px] font-semibold text-[#6E6C76]">
-                    <span>{artist.role}</span>
-                    <span>{artist.is_published ? "공개" : "비공개"}</span>
-                  </span>
-                </button>
+                  <div className="grid grid-cols-[1fr_auto] gap-2">
+                    <button
+                      type="button"
+                      onClick={() => selectArtist(artist)}
+                      className="min-w-0 text-left"
+                    >
+                      <span className="block truncate text-[13px] font-bold text-white">
+                        {artist.name}
+                      </span>
+                      <span className="mt-2 block text-[11px] font-semibold text-[#6E6C76]">
+                        {artist.is_published ? "공개" : "비공개"}
+                      </span>
+                    </button>
+                    <div className="grid grid-cols-2 gap-1">
+                      <button
+                        type="button"
+                        onClick={() => reorderArtists(artist.id, -1)}
+                        disabled={index === 0}
+                        aria-label={`${artist.name} 위로 이동`}
+                        className="flex size-7 items-center justify-center rounded-[6px] border border-[#303036] text-[#B9B8C0] transition hover:border-[#8D4CFF] hover:text-white disabled:opacity-30"
+                      >
+                        <ArrowUp size={14} />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => reorderArtists(artist.id, 1)}
+                        disabled={index === filteredArtists.length - 1}
+                        aria-label={`${artist.name} 아래로 이동`}
+                        className="flex size-7 items-center justify-center rounded-[6px] border border-[#303036] text-[#B9B8C0] transition hover:border-[#8D4CFF] hover:text-white disabled:opacity-30"
+                      >
+                        <ArrowDown size={14} />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => deleteArtist(artist)}
+                        aria-label={`${artist.name} 삭제`}
+                        className="col-span-2 flex h-7 items-center justify-center rounded-[6px] border border-[#303036] text-[#B9B8C0] transition hover:border-[#FF6B6B] hover:text-[#FF9A9A]"
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    </div>
+                  </div>
+                </div>
               );
             })
           ) : (
             <p className="rounded-[8px] border border-[#222226] bg-[#101012] p-4 text-[13px] text-[#8E8D96]">
-              비밀번호 확인 후 목록이 표시됩니다.
+              {isLoading ? "목록을 불러오는 중입니다." : `${activeListLabel} 항목이 없습니다.`}
             </p>
           )}
         </div>
@@ -313,7 +417,7 @@ export default function AdminArtistsForm({
               <button
                 key={item}
                 type="button"
-                onClick={() => setRole(item)}
+                onClick={() => switchRole(item)}
                 className={`h-[46px] rounded-[8px] border text-[13px] font-bold uppercase tracking-[1.2px] transition ${
                   isActive
                     ? "border-[#8D4CFF] bg-[#8D4CFF] text-white"
@@ -354,8 +458,8 @@ export default function AdminArtistsForm({
           ) : null}
         </div>
 
-        <div className="grid gap-4 md:grid-cols-2">
-          {!isWithArtist ? (
+        {!isWithArtist ? (
+          <div className="grid gap-4 md:grid-cols-2">
             <label className="block">
               <span className="text-[13px] font-semibold text-[#9A99A2]">
                 키(cm)
@@ -370,20 +474,20 @@ export default function AdminArtistsForm({
                 className="mt-2 h-[46px] w-full rounded-[8px] border border-[#2A2A2E] bg-[#101012] px-4 text-[14px] outline-none transition placeholder:text-[#4B4A52] focus:border-[#8D4CFF]"
               />
             </label>
-          ) : null}
 
-          <label className="block">
-            <span className="text-[13px] font-semibold text-[#9A99A2]">
-              정렬 순서
-            </span>
-            <input
-              type="number"
-              value={sortOrder}
-              onChange={(event) => setSortOrder(event.target.value)}
-              className="mt-2 h-[46px] w-full rounded-[8px] border border-[#2A2A2E] bg-[#101012] px-4 text-[14px] outline-none transition focus:border-[#8D4CFF]"
-            />
-          </label>
-        </div>
+            <label className="block">
+              <span className="text-[13px] font-semibold text-[#9A99A2]">
+                정렬 순서
+              </span>
+              <input
+                type="number"
+                value={sortOrder}
+                onChange={(event) => setSortOrder(event.target.value)}
+                className="mt-2 h-[46px] w-full rounded-[8px] border border-[#2A2A2E] bg-[#101012] px-4 text-[14px] outline-none transition focus:border-[#8D4CFF]"
+              />
+            </label>
+          </div>
+        ) : null}
 
         {!isWithArtist ? (
           <label className="block">
@@ -468,17 +572,6 @@ export default function AdminArtistsForm({
             />
             공개
           </label>
-          {!isWithArtist ? (
-            <label className="flex h-[42px] w-fit items-center gap-3 rounded-[8px] border border-[#2A2A2E] px-4 text-[13px] font-semibold text-[#C7C6CC]">
-              <input
-                type="checkbox"
-                checked={isFeatured}
-                onChange={(event) => setIsFeatured(event.target.checked)}
-                className="size-4 accent-[#8D4CFF]"
-              />
-              Featured
-            </label>
-          ) : null}
         </div>
 
         <div className="flex flex-wrap items-center gap-4">
@@ -497,7 +590,7 @@ export default function AdminArtistsForm({
           {isEditMode ? (
             <button
               type="button"
-              onClick={resetForm}
+              onClick={() => resetForm(role)}
               className="inline-flex h-[50px] items-center justify-center gap-2 rounded-[8px] border border-[#2A2A2E] px-5 text-[14px] font-bold text-[#C7C6CC] transition hover:border-[#8D4CFF] hover:text-white"
             >
               <X size={16} />

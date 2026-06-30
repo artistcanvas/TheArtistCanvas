@@ -120,7 +120,7 @@ export default function AdminHeroCardsForm({
     }
 
     setMetadata(data);
-    setTitle((current) => current || data.title);
+    setTitle(data.title);
     setStatus("YouTube 정보를 가져왔습니다.");
   };
 
@@ -147,7 +147,7 @@ export default function AdminHeroCardsForm({
         password,
         position,
         youtubeUrl,
-        title,
+        title: title || metadata?.title || selectedCard?.title || "",
         isPublished,
       }),
     });
@@ -168,8 +168,8 @@ export default function AdminHeroCardsForm({
   };
 
   return (
-    <section className="mx-auto grid w-full max-w-[1040px] gap-8 lg:grid-cols-[280px_minmax(0,1fr)]">
-      <aside className="space-y-4 lg:sticky lg:top-[120px] lg:h-fit">
+    <section className="mx-auto grid w-full max-w-[1280px] gap-8 xl:grid-cols-[280px_minmax(0,1fr)_360px]">
+      <aside className="space-y-4 xl:sticky xl:top-[120px] xl:h-fit">
         <div className="border-b border-[#222226] pb-4">
           <p className="text-[12px] font-semibold uppercase tracking-[2px] text-[#8D4CFF]">
             Hero
@@ -177,7 +177,7 @@ export default function AdminHeroCardsForm({
           <h2 className="mt-2 text-[20px] font-bold">Video Cards</h2>
         </div>
 
-        <div className="grid grid-cols-3 gap-2 lg:grid-cols-1">
+        <div className="max-h-[360px] space-y-2 overflow-y-auto pr-2">
           {[1, 2, 3].map((slot) => {
             const card = cards.find((item) => item.position === slot);
             const isActive = position === slot;
@@ -187,7 +187,7 @@ export default function AdminHeroCardsForm({
                 key={slot}
                 type="button"
                 onClick={() => selectPosition(slot)}
-                className={`rounded-[8px] border p-3 text-left transition ${
+                className={`w-full rounded-[8px] border p-3 text-left transition ${
                   isActive
                     ? "border-[#8D4CFF] bg-[#171122]"
                     : "border-[#222226] bg-[#101012] hover:border-[#4C4B52]"
@@ -200,7 +200,7 @@ export default function AdminHeroCardsForm({
                   {card?.title ?? "Empty"}
                 </span>
                 <span className="mt-2 block text-[11px] font-semibold text-[#6E6C76]">
-                  {card?.is_published === false ? "Hidden" : "Published"}
+                  {card?.is_published === false ? "비공개" : "공개"}
                 </span>
               </button>
             );
@@ -288,18 +288,6 @@ export default function AdminHeroCardsForm({
           </button>
         </div>
 
-        <label className="block">
-          <span className="text-[13px] font-semibold text-[#9A99A2]">
-            카드 제목
-          </span>
-          <input
-            value={title}
-            onChange={(event) => setTitle(event.target.value)}
-            placeholder="Off Shot"
-            className="mt-2 h-[46px] w-full rounded-[8px] border border-[#2A2A2E] bg-[#101012] px-4 text-[14px] outline-none transition placeholder:text-[#4B4A52] focus:border-[#8D4CFF]"
-          />
-        </label>
-
         <label className="flex h-[42px] w-fit items-center gap-3 rounded-[8px] border border-[#2A2A2E] px-4 text-[13px] font-semibold text-[#C7C6CC]">
           <input
             type="checkbox"
@@ -309,26 +297,6 @@ export default function AdminHeroCardsForm({
           />
           공개
         </label>
-
-        <div className="overflow-hidden rounded-[8px] border border-[#222226] bg-[#101012]">
-          <div
-            className="aspect-video bg-cover bg-center"
-            style={{
-              backgroundImage:
-                metadata?.thumbnailUrl || selectedCard?.thumbnail_url
-                  ? `url(${metadata?.thumbnailUrl ?? selectedCard?.thumbnail_url})`
-                  : "linear-gradient(116deg,#202026 0%,#151519 42%,#060607 72%,#020203 100%)",
-            }}
-          />
-          <div className="p-5">
-            <p className="text-[11px] font-bold uppercase tracking-[1.5px] text-[#8D4CFF]">
-              Preview
-            </p>
-            <h2 className="mt-2 text-[18px] font-bold leading-snug">
-              {title || metadata?.title || selectedCard?.title || "Hero card title"}
-            </h2>
-          </div>
-        </div>
 
         <div className="flex flex-wrap items-center gap-4">
           <button
@@ -348,6 +316,20 @@ export default function AdminHeroCardsForm({
           ) : null}
         </div>
       </form>
+
+      <aside className="space-y-4 xl:sticky xl:top-[120px] xl:h-fit">
+        <div className="overflow-hidden rounded-[8px] border border-[#222226] bg-[#101012]">
+          <div
+            className="aspect-video bg-cover bg-center"
+            style={{
+              backgroundImage:
+                metadata?.thumbnailUrl || selectedCard?.thumbnail_url
+                  ? `url(${metadata?.thumbnailUrl ?? selectedCard?.thumbnail_url})`
+                  : "linear-gradient(116deg,#202026 0%,#151519 42%,#060607 72%,#020203 100%)",
+            }}
+          />
+        </div>
+      </aside>
     </section>
   );
 }
