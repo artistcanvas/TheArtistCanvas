@@ -1,11 +1,9 @@
 "use client";
 
 import { PropsWithChildren, useEffect, useRef } from "react";
-import { HOW_TO_QUOTE_PLAY_EVENT } from "./landingScrollEvents";
 import { animateWindowScroll } from "./scrollAnimation";
 
 const HERO_ID = "hero";
-const HOW_TO_ID = "how-to";
 const HOW_TO_CARD_CONTAINER_ID = "how-to-card-container";
 const SNAP_TOLERANCE = 24;
 const TOUCH_DELTA_THRESHOLD = 12;
@@ -41,11 +39,7 @@ export default function LandingScrollController({
       };
     };
 
-    const playHowToQuote = () => {
-      window.dispatchEvent(new Event(HOW_TO_QUOTE_PLAY_EVENT));
-    };
-
-    const snapTo = (id: string, top: number) => {
+    const snapTo = (top: number) => {
       isSnappingRef.current = true;
 
       if (cancelScrollAnimationRef.current) {
@@ -61,10 +55,6 @@ export default function LandingScrollController({
         top,
         duration,
         onComplete: () => {
-          if (id === HOW_TO_ID) {
-            playHowToQuote();
-          }
-
           isSnappingRef.current = false;
           cancelScrollAnimationRef.current = null;
         },
@@ -74,23 +64,14 @@ export default function LandingScrollController({
     const maybeSnapDown = () => {
       if (isSnappingRef.current) return false;
 
-      const howToTop = getTargetTop(HOW_TO_ID);
       const cardContainerTop = getTargetTop(HOW_TO_CARD_CONTAINER_ID);
 
-      if (howToTop === null || cardContainerTop === null) return false;
+      if (cardContainerTop === null) return false;
 
       const scrollY = window.scrollY;
 
-      if (scrollY < howToTop - SNAP_TOLERANCE) {
-        snapTo(HOW_TO_ID, howToTop);
-        return true;
-      }
-
-      if (
-        Math.abs(scrollY - howToTop) <= SNAP_TOLERANCE ||
-        (scrollY > howToTop && scrollY < cardContainerTop - SNAP_TOLERANCE)
-      ) {
-        snapTo(HOW_TO_CARD_CONTAINER_ID, cardContainerTop);
+      if (scrollY < cardContainerTop - SNAP_TOLERANCE) {
+        snapTo(cardContainerTop);
         return true;
       }
 
@@ -101,34 +82,19 @@ export default function LandingScrollController({
       if (isSnappingRef.current) return false;
 
       const heroTop = getTargetTop(HERO_ID);
-      const howToTop = getTargetTop(HOW_TO_ID);
-      const howToBounds = getTargetBounds(HOW_TO_ID);
       const cardContainerBounds = getTargetBounds(HOW_TO_CARD_CONTAINER_ID);
 
-      if (
-        heroTop === null ||
-        howToTop === null ||
-        howToBounds === null ||
-        cardContainerBounds === null
-      ) {
+      if (heroTop === null || cardContainerBounds === null) {
         return false;
       }
 
       const scrollY = window.scrollY;
-      const isInHowTo =
-        scrollY >= howToBounds.top - SNAP_TOLERANCE &&
-        scrollY <= howToBounds.bottom - SNAP_TOLERANCE;
       const isInCardContainer =
         scrollY >= cardContainerBounds.top - SNAP_TOLERANCE &&
         scrollY <= cardContainerBounds.bottom - SNAP_TOLERANCE;
 
-      if (scrollY > heroTop + SNAP_TOLERANCE && isInHowTo) {
-        snapTo(HERO_ID, heroTop);
-        return true;
-      }
-
-      if (scrollY > howToTop + SNAP_TOLERANCE && isInCardContainer) {
-        snapTo(HOW_TO_ID, howToTop);
+      if (scrollY > heroTop + SNAP_TOLERANCE && isInCardContainer) {
+        snapTo(heroTop);
         return true;
       }
 
@@ -136,6 +102,11 @@ export default function LandingScrollController({
     };
 
     const handleWheel = (event: WheelEvent) => {
+      if (isSnappingRef.current) {
+        event.preventDefault();
+        return;
+      }
+
       if (event.deltaY < 0) {
         if (maybeSnapUp()) {
           event.preventDefault();
@@ -156,6 +127,11 @@ export default function LandingScrollController({
     };
 
     const handleTouchMove = (event: TouchEvent) => {
+      if (isSnappingRef.current) {
+        event.preventDefault();
+        return;
+      }
+
       if (touchStartYRef.current === null) return;
 
       const currentY = event.touches[0]?.clientY;

@@ -149,8 +149,8 @@ export default function HowToCard({ cards, shouldReveal }: HowToCardProps) {
                   top: `${index * cardStepPercent}${isDesktop ? "%" : "px"}`,
                   zIndex: visibleCards.length - index,
                   transition: {
-                    duration: isDesktop ? 0.9 : 0,
-                    delay: isDesktop ? 0.1 + index * 0.08 : 0,
+                    duration: isDesktop ? 0.7 : 0,
+                    delay: isDesktop ? 0.05 + index * 0.08 : 0,
                     ease: [0.1, 1, 0.36, 1],
                   },
                 },
@@ -227,7 +227,7 @@ export default function HowToCard({ cards, shouldReveal }: HowToCardProps) {
                 rel="noreferrer"
                 className="flex min-h-[220px] items-center justify-center rounded-[8px] bg-[#101012] px-6 text-center text-[15px] font-bold text-white"
               >
-                YouTube?먯꽌 ?곸긽 ?닿린
+                YouTube
               </a>
             )}
           </div>

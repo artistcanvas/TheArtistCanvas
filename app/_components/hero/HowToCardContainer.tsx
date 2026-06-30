@@ -13,12 +13,8 @@ type HowToCardContainerProps = {
 export default function HowToCardContainer({ cards }: HowToCardContainerProps) {
   const sectionRef = useRef<HTMLElement>(null);
   const lineTrackRef = useRef<HTMLDivElement>(null);
-  const {
-    durationSeconds,
-    isLineActive,
-    isLineComplete,
-    setIsLineComplete,
-  } = useProgressLineFollow({ lineTrackRef });
+  const { durationSeconds, isLineActive, isLineComplete, setIsLineComplete } =
+    useProgressLineFollow({ lineTrackRef });
 
   return (
     <section
@@ -40,7 +36,7 @@ export default function HowToCardContainer({ cards }: HowToCardContainerProps) {
 
             <div className="md:absolute md:bottom-0 md:left-[50px]">
               <h3 className="text-[clamp(24px,calc((30/1920)*100vw),30px)] font-medium">
-                How We Create
+                MAKING FILM <span className="font-light">(제작 과정)</span>
               </h3>
 
               <p className="mt-[clamp(27px,calc((35/1920)*100vw),35px)] text-[clamp(14px,calc((20/1920)*100vw),20px)] font-light leading-8 text-white md:leading-9">

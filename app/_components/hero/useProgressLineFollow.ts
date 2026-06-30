@@ -66,6 +66,12 @@ export default function useProgressLineFollow({
       );
     };
 
+    const preventScrollDuringLineFollow = (event: WheelEvent | TouchEvent) => {
+      if (scrollAnimationFrameRef.current === null) return;
+
+      event.preventDefault();
+    };
+
     const startLineFollowScroll = () => {
       if (!canAutoScroll()) return;
 
@@ -148,10 +154,24 @@ export default function useProgressLineFollow({
 
     lineObserver.observe(lineTrack);
     window.addEventListener("scroll", handleScroll, { passive: true });
+    window.addEventListener("wheel", preventScrollDuringLineFollow, {
+      capture: true,
+      passive: false,
+    });
+    window.addEventListener("touchmove", preventScrollDuringLineFollow, {
+      capture: true,
+      passive: false,
+    });
 
     return () => {
       lineObserver.disconnect();
       window.removeEventListener("scroll", handleScroll);
+      window.removeEventListener("wheel", preventScrollDuringLineFollow, {
+        capture: true,
+      });
+      window.removeEventListener("touchmove", preventScrollDuringLineFollow, {
+        capture: true,
+      });
       cancelLineFollowScroll();
     };
   }, [lineTrackRef]);

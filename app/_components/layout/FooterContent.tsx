@@ -8,7 +8,8 @@ export type FooterContactLink = {
 };
 
 const socialLinks = {
-  instagram: "https://www.instagram.com/the_artist_canvas?igsh=MXM4YWh5MGRvcm55",
+  instagram:
+    "https://www.instagram.com/the_artist_canvas?igsh=MXM4YWh5MGRvcm55",
   youtube: "https://www.youtube.com/@TheArtistCanvas",
 } as const;
 
@@ -51,18 +52,6 @@ export function FooterContent({
           </p>
         </div>
         <div className="flex min-w-0 flex-col items-start gap-[40px] md:items-end md:gap-[61px]">
-          <div className="flex min-w-0 flex-col gap-[24px] md:flex-row md:gap-[60px]">
-            <span className="text-[14px] font-semibold text-[#5B5A62]">
-              CONTACT
-            </span>
-            <ul className="flex min-w-0 flex-col gap-[18px] md:flex-row md:gap-[54px]">
-              {footerLinks.map((link) => (
-                <li key={link.name}>
-                  <FooterContactItem link={link} />
-                </li>
-              ))}
-            </ul>
-          </div>
           <div className="flex gap-[10px]">
             <a
               aria-label="Instagram"
