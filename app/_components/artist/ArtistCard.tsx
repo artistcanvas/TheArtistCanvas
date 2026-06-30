@@ -58,7 +58,7 @@ export default function ArtistCard({ artist }: { artist: ArtistProfile }) {
               <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_46%,rgba(255,255,255,0.12),transparent_21%),linear-gradient(116deg,rgba(255,255,255,0.045)_0%,transparent_31%,rgba(255,255,255,0.025)_60%,transparent_100%)]" />
             </>
           )}
-          <div className="absolute inset-x-0 bottom-0 h-[37%] bg-gradient-to-t from-black via-black/54 to-transparent" />
+          <div className="absolute inset-x-0 bottom-0 h-[37%] bg-gradient-to-t from-black via-black/54 to-transparent opacity-0 transition-opacity duration-200 group-hover:opacity-100 group-focus-visible:opacity-100" />
 
           <span className="absolute bottom-[27px] left-[20px] flex translate-y-[6px] items-center gap-[4px] text-[11px] font-bold text-[#8D4CFF] opacity-0 transition-[opacity,transform] duration-200 group-hover:translate-y-0 group-hover:opacity-100 group-focus-visible:translate-y-0 group-focus-visible:opacity-100 md:bottom-[31px] md:left-[20px] md:text-[clamp(11px,calc((12/1920)*100vw),12px)]">
             프로필 보기
