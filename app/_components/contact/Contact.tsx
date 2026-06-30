@@ -30,7 +30,7 @@ export default function Contact({
                   <a
                     key={email.id ?? `${item.inquiryType}-${email.email}`}
                     href={`mailto:${email.email}`}
-                    className="block text-nowrap text-[12px] font-normal leading-[28px] text-[#5B5A62] transition hover:text-white md:text-[clamp(12px,calc((16/1920)*100vw),16px)] md:leading-[37px]"
+                    className="block text-nowrap text-[12px] font-normal leading-[20px] text-[#5B5A62] transition hover:text-white md:text-[clamp(12px,calc((16/1920)*100vw),16px)] md:leading-[25px]"
                   >
                     {email.email}
                   </a>

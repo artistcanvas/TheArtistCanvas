@@ -1,3 +1,5 @@
+import type { ReactNode } from "react";
+
 export type ContactInquiryType =
   | "content_production"
   | "advertising_ppl"
@@ -13,7 +15,7 @@ export type ContactEmail = {
 
 export type ContactSection = {
   inquiryType: ContactInquiryType;
-  title: string;
+  title: ReactNode;
   detail?: string;
   emails: ContactEmail[];
 };
@@ -36,8 +38,12 @@ export const contactSections: Array<Omit<ContactSection, "emails">> = [
   },
   {
     inquiryType: "casting",
-    title: "섭외 문의",
-    detail: "방송, 행사, 섭외 등",
+    title: (
+      <>
+        섭외 문의 <span className="font-extralight">(방송, 행사, 섭외 등)</span>
+      </>
+    ),
+    // detail: "방송, 행사, 섭외 등",
   },
   {
     inquiryType: "general",
@@ -49,7 +55,7 @@ export const fallbackContactData: ContactSection[] = contactSections.map(
   (section) => ({
     ...section,
     emails: [],
-  })
+  }),
 );
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -79,7 +85,7 @@ export async function getContactData(): Promise<ContactSection[]> {
   contactUrl.searchParams.set("is_published", "eq.true");
   contactUrl.searchParams.set(
     "order",
-    "inquiry_type.asc,sort_order.asc,created_at.asc"
+    "inquiry_type.asc,sort_order.asc,created_at.asc",
   );
 
   const response = await fetch(contactUrl, {
