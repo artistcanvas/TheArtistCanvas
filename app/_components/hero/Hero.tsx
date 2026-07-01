@@ -37,7 +37,7 @@ export const Hero = () => {
               <span className="hero-peach-drop absolute left-[24.75%] top-[82.05%] block h-[11%] w-[4.7%] rounded-bl-full rounded-br-full rounded-tl-full" />
             </div>
           </div>
-          <p className="mx-auto mt-[clamp(28px,calc((60/1920)*100vw),60px)] max-w-full text-center text-[clamp(16px,calc((60/1920)*100vw),60px)] font-semibold leading-none text-white md:ml-0">
+          <p className="mx-auto mt-[clamp(28px,calc((100/1920)*100vw),100px)] max-w-full text-center text-[clamp(16px,calc((40/1920)*100vw),40px)] font-semibold leading-none text-white md:ml-0">
             상상은 현실이 된다
           </p>
         </div>
