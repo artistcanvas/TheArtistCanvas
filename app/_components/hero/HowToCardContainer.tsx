@@ -20,7 +20,7 @@ export default function HowToCardContainer({ cards }: HowToCardContainerProps) {
     <section
       ref={sectionRef}
       id="how-to-card-container"
-      className="relative flex justify-center overflow-hidden pb-[clamp(120px,calc((206/1920)*100vw),206px)] pt-[clamp(96px,calc((170/1920)*100vw),170px)]"
+      className="relative flex justify-center overflow-hidden pt-[clamp(96px,calc((170/1920)*100vw),170px)]"
     >
       <div className="w-full max-w-[1920px] px-5 md:px-[clamp(20px,calc((170/1920)*100vw),170px)]">
         <div className="relative grid gap-[36px] md:min-h-[1510px] md:grid-cols-[1fr_1fr] md:items-end md:gap-20">
