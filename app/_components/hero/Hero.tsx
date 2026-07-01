@@ -14,7 +14,7 @@ export const Hero = () => {
       id="hero"
       className="relative h-svh min-h-[640px] w-full overflow-hidden px-5 md:px-0"
     >
-      <div className="absolute left-1/2 top-1/2 flex w-full max-w-[1920px] -translate-x-1/2 -translate-y-1/2 flex-col items-end gap-[clamp(72px,calc((249/1920)*100vw),249px)] px-5 md:flex-row md:justify-between md:gap-10 md:px-0 md:pl-[90px] md:pr-[clamp(90px,calc((201/1920)*100vw),201px)]">
+      <div className="absolute left-1/2 top-1/2 flex w-full max-w-[1920px] -translate-x-1/2 -translate-y-1/2 flex-col items-end gap-[clamp(72px,calc((249/1920)*100vw),249px)] px-5 md:flex-row md:items-center md:justify-between md:gap-10 md:px-0 md:pl-[90px] md:pr-[clamp(90px,calc((201/1920)*100vw),201px)]">
         <div className="relative mx-auto w-full shrink md:mx-0 md:w-[min(100%,clamp(335px,calc((922/1920)*100vw),922px))]">
           <div className="relative mx-auto aspect-[922/356] w-full">
             <Image
@@ -41,7 +41,7 @@ export const Hero = () => {
             상상은 현실이 된다
           </p>
         </div>
-        <div className="mx-auto flex w-full flex-col items-end space-y-[clamp(17px,calc((60/1920)*100vw),60px)] md:mx-0 md:w-auto md:items-start">
+        <div className="mx-auto flex w-full flex-col items-end space-y-[clamp(17px,calc((60/1920)*100vw),60px)] md:mx-0 md:w-auto md:items-start md:h-full md:justify-center">
           <p className="text-nowrap text-end text-[clamp(16px,calc((25/1920)*100vw),25px)] font-light text-[#9D9D9D] md:text-start">
             아티스트가 머무는 곳
             <br />
