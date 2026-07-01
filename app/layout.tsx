@@ -69,7 +69,7 @@ export const arial = localFont({
 });
 
 export const metadata: Metadata = {
-  title: "The Artist Canvas",
+  title: "TAC",
   description: "The Artist Canvas",
   metadataBase: new URL(
     process.env.NEXT_PUBLIC_SITE_URL ?? "https://tac-landing-bay.vercel.app/",
