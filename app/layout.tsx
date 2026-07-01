@@ -72,7 +72,7 @@ export const metadata: Metadata = {
   title: "The Artist Canvas",
   description: "The Artist Canvas",
   metadataBase: new URL(
-    process.env.NEXT_PUBLIC_SITE_URL ?? "https://theartistcanvas.com"
+    process.env.NEXT_PUBLIC_SITE_URL ?? "https://tac-landing-bay.vercel.app/",
   ),
   icons: {
     icon: "/tac-favicon.png",

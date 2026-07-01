@@ -54,8 +54,8 @@ export const Hero = () => {
         </div>
       </div>
 
-      <div className="absolute bottom-[5%] left-1/2 hidden -translate-x-1/2 flex-col items-center gap-[clamp(18px,calc((28/1920)*100vw),28px)] md:flex">
-        <p className="text-center text-[clamp(16px,calc((20/1920)*100vw),20px)] leading-none text-white">
+      <div className="absolute bottom-[5%] left-1/2 hidden -translate-x-1/2 flex-col items-center gap-[clamp(18px,calc((60/1920)*100vw),60px)] md:flex">
+        <p className="text-center font-semibold text-[clamp(16px,calc((50/1920)*100vw),50px)] leading-none text-white">
           상상은 현실이 된다
         </p>
         <div className="flex h-12 w-16 flex-col items-center justify-between">
