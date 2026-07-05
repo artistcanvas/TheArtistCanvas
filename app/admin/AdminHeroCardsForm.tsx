@@ -1,7 +1,13 @@
 "use client";
 
-import { Check, Eye, Loader2, Save } from "lucide-react";
+import { Check, Eye, Loader2, Save, Trash2 } from "lucide-react";
 import { FormEvent, useEffect, useState } from "react";
+
+const MAX_HERO_CARDS = 10;
+const heroCardSlots = Array.from(
+  { length: MAX_HERO_CARDS },
+  (_, index) => index + 1
+);
 
 type AdminHeroCard = {
   id: string;
@@ -39,8 +45,32 @@ export default function AdminHeroCardsForm({
   const [isLoading, setIsLoading] = useState(false);
   const [isLoadingMetadata, setIsLoadingMetadata] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const selectedCard = cards.find((card) => card.position === position);
+  const selectPosition = (
+    nextPosition: number,
+    sourceCards: AdminHeroCard[] = cards
+  ) => {
+    const card = sourceCards.find((item) => item.position === nextPosition);
+
+    setPosition(nextPosition);
+    setYoutubeUrl(card?.youtube_url ?? "");
+    setTitle(card?.title ?? "");
+    setIsPublished(card?.is_published ?? true);
+    setMetadata(
+      card
+        ? {
+            source: "youtube-oembed",
+            videoId: "",
+            title: card.title,
+            thumbnailUrl: card.thumbnail_url,
+            channelName: "saved",
+          }
+        : null
+    );
+    setStatus("");
+  };
 
   const loadCards = async (adminPassword = password) => {
     if (!adminPassword) {
@@ -63,8 +93,14 @@ export default function AdminHeroCardsForm({
       return;
     }
 
-    setCards(data.cards ?? []);
+    const loadedCards = (data.cards ?? []) as AdminHeroCard[];
+    setCards(loadedCards);
     setStatus("Hero 카드 목록을 불러왔습니다.");
+
+    if (!loadedCards.some((card) => card.position === position)) {
+      const firstCard = loadedCards[0];
+      selectPosition(firstCard?.position ?? 1, loadedCards);
+    }
   };
 
   useEffect(() => {
@@ -75,27 +111,6 @@ export default function AdminHeroCardsForm({
     return () => window.clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [adminPassword]);
-
-  const selectPosition = (nextPosition: number) => {
-    const card = cards.find((item) => item.position === nextPosition);
-
-    setPosition(nextPosition);
-    setYoutubeUrl(card?.youtube_url ?? "");
-    setTitle(card?.title ?? "");
-    setIsPublished(card?.is_published ?? true);
-    setMetadata(
-      card
-        ? {
-            source: "youtube-oembed",
-            videoId: "",
-            title: card.title,
-            thumbnailUrl: card.thumbnail_url,
-            channelName: "saved",
-          }
-        : null
-    );
-    setStatus("");
-  };
 
   const loadMetadata = async () => {
     if (!youtubeUrl.trim()) {
@@ -167,6 +182,50 @@ export default function AdminHeroCardsForm({
     });
   };
 
+  const deleteCard = async () => {
+    if (!selectedCard) {
+      setStatus("삭제할 Hero 카드를 먼저 선택해주세요.");
+      return;
+    }
+
+    const shouldDelete = window.confirm(
+      `Card ${selectedCard.position} "${selectedCard.title}"을 삭제할까요?`
+    );
+
+    if (!shouldDelete) {
+      return;
+    }
+
+    setIsDeleting(true);
+    setStatus("");
+
+    const response = await fetch("/api/admin/hero-cards", {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ password, id: selectedCard.id }),
+    });
+    const data = await response.json();
+
+    setIsDeleting(false);
+
+    if (!response.ok) {
+      setStatus(data.error ?? "Hero 카드를 삭제하지 못했습니다.");
+      return;
+    }
+
+    setCards((current) => {
+      const next = current.filter((card) => card.id !== selectedCard.id);
+      const nextPosition =
+        next.find((card) => card.position > position)?.position ??
+        next.find((card) => card.position < position)?.position ??
+        position;
+
+      window.setTimeout(() => selectPosition(nextPosition, next), 0);
+      return next;
+    });
+    setStatus("Hero 카드를 삭제했습니다.");
+  };
+
   return (
     <section className="mx-auto grid w-full max-w-[1280px] gap-8 xl:grid-cols-[280px_minmax(0,1fr)_360px]">
       <aside className="space-y-4 xl:sticky xl:top-[120px] xl:h-fit">
@@ -177,8 +236,8 @@ export default function AdminHeroCardsForm({
           <h2 className="mt-2 text-[20px] font-bold">Video Cards</h2>
         </div>
 
-        <div className="max-h-[360px] space-y-2 overflow-y-auto pr-2">
-          {[1, 2, 3].map((slot) => {
+        <div className="max-h-[520px] space-y-2 overflow-y-auto pr-2">
+          {heroCardSlots.map((slot) => {
             const card = cards.find((item) => item.position === slot);
             const isActive = position === slot;
 
@@ -200,7 +259,11 @@ export default function AdminHeroCardsForm({
                   {card?.title ?? "Empty"}
                 </span>
                 <span className="mt-2 block text-[11px] font-semibold text-[#6E6C76]">
-                  {card?.is_published === false ? "비공개" : "공개"}
+                  {card
+                    ? card.is_published === false
+                      ? "비공개"
+                      : "공개"
+                    : "새 카드"}
                 </span>
               </button>
             );
@@ -209,7 +272,7 @@ export default function AdminHeroCardsForm({
       </aside>
 
       <form onSubmit={saveCard} className="space-y-7">
-        <div className="flex items-start justify-between gap-4 border-b border-[#222226] pb-5">
+        <div className="flex flex-col gap-4 border-b border-[#222226] pb-5 md:flex-row md:items-start md:justify-between">
           <div>
             <p className="text-[12px] font-semibold uppercase tracking-[2px] text-[#8D4CFF]">
               Admin
@@ -218,6 +281,20 @@ export default function AdminHeroCardsForm({
               Hero 카드 관리
             </h1>
           </div>
+
+          <button
+            type="button"
+            onClick={deleteCard}
+            disabled={!selectedCard || isDeleting}
+            className="inline-flex h-[42px] items-center justify-center gap-2 rounded-[8px] border border-[#5A242A] px-4 text-[13px] font-bold text-[#FF8A95] transition hover:border-[#FF5C6C] hover:text-white disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            {isDeleting ? (
+              <Loader2 size={16} className="animate-spin" />
+            ) : (
+              <Trash2 size={16} />
+            )}
+            삭제
+          </button>
         </div>
 
         <div className="hidden">
@@ -238,26 +315,13 @@ export default function AdminHeroCardsForm({
             disabled={isLoading}
             className="mt-auto inline-flex h-[46px] items-center justify-center gap-2 rounded-[8px] bg-white px-5 text-[14px] font-bold text-[#060607] transition hover:bg-[#D7D7DC] disabled:opacity-50"
           >
-            {isLoading ? <Loader2 size={16} className="animate-spin" /> : <Check size={16} />}
+            {isLoading ? (
+              <Loader2 size={16} className="animate-spin" />
+            ) : (
+              <Check size={16} />
+            )}
             확인
           </button>
-        </div>
-
-        <div className="grid gap-4 md:grid-cols-3">
-          {[1, 2, 3].map((slot) => (
-            <button
-              key={slot}
-              type="button"
-              onClick={() => selectPosition(slot)}
-              className={`h-[46px] rounded-[8px] border text-[13px] font-bold uppercase tracking-[1.2px] transition ${
-                position === slot
-                  ? "border-[#8D4CFF] bg-[#8D4CFF] text-white"
-                  : "border-[#2A2A2E] bg-[#101012] text-[#8E8D96] hover:border-[#6E6C76]"
-              }`}
-            >
-              Card {slot}
-            </button>
-          ))}
         </div>
 
         <div className="grid gap-4 md:grid-cols-[1fr_auto]">
@@ -287,6 +351,19 @@ export default function AdminHeroCardsForm({
             정보 가져오기
           </button>
         </div>
+
+        <label className="block">
+          <span className="text-[13px] font-semibold text-[#9A99A2]">
+            제목
+          </span>
+          <input
+            type="text"
+            value={title}
+            onChange={(event) => setTitle(event.target.value)}
+            placeholder="YouTube 정보 가져오기로 자동 입력됩니다"
+            className="mt-2 h-[46px] w-full rounded-[8px] border border-[#2A2A2E] bg-[#101012] px-4 text-[14px] outline-none transition placeholder:text-[#4B4A52] focus:border-[#8D4CFF]"
+          />
+        </label>
 
         <label className="flex h-[42px] w-fit items-center gap-3 rounded-[8px] border border-[#2A2A2E] px-4 text-[13px] font-semibold text-[#C7C6CC]">
           <input

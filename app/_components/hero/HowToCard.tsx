@@ -1,20 +1,26 @@
-﻿"use client";
+"use client";
 
 import { motion } from "framer-motion";
 import { Play, X } from "lucide-react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import type { HeroVideoCard } from "./heroVideoCardTypes";
+import { animateWindowScroll } from "./scrollAnimation";
 
-const MD_BREAKPOINT = 768;
-const MOBILE_CARD_WIDTH = 335;
-const MOBILE_CARD_HEIGHT = 188;
-const MOBILE_CARD_GAP = 16;
-const DESKTOP_CARD_STEP_PERCENT = 33.78;
-const DESKTOP_HIDDEN_TOP_PERCENT = 67.55;
+const WHEEL_COOLDOWN_MS = 420;
+const EDGE_EXIT_DELAY_MS = 720;
+const WHEEL_THRESHOLD = 24;
+const CENTER_CARD_FALLBACK_WIDTH = 640;
+const HOW_TO_CARD_CONTAINER_ID = "how-to-card-container";
+const SNAP_SCROLL_DURATION = 520;
 
 type HowToCardProps = {
   cards: HeroVideoCard[];
-  shouldReveal: boolean;
 };
 
 function getYouTubeVideoId(youtubeUrl: string) {
@@ -46,15 +52,36 @@ function getYouTubeVideoId(youtubeUrl: string) {
   return null;
 }
 
-export default function HowToCard({ cards, shouldReveal }: HowToCardProps) {
-  const stackRef = useRef<HTMLDivElement>(null);
-  const [isDesktop, setIsDesktop] = useState(false);
-  const [cardWidth, setCardWidth] = useState(MOBILE_CARD_WIDTH);
+function getCardOffset(index: number, activeIndex: number, total: number) {
+  let offset = (index - activeIndex + total) % total;
+
+  if (offset > total / 2) {
+    offset -= total;
+  }
+
+  return offset;
+}
+
+export default function HowToCard({ cards }: HowToCardProps) {
+  const carouselRef = useRef<HTMLDivElement>(null);
+  const lastWheelAtRef = useRef(0);
+  const edgeExitAfterRef = useRef(0);
+  const isSnappingToSectionRef = useRef(false);
+  const cancelSectionSnapRef = useRef<(() => void) | null>(null);
+  const [carouselWidth, setCarouselWidth] = useState(0);
+  const [activeIndex, setActiveIndex] = useState(0);
   const [activeCard, setActiveCard] = useState<HeroVideoCard | null>(null);
   const visibleCards = useMemo(
-    () => cards.slice(0, 3).sort((a, b) => a.position - b.position),
+    () => [...cards].sort((a, b) => a.position - b.position).slice(0, 10),
     [cards],
   );
+  const totalCards = visibleCards.length;
+  const centerCardWidth =
+    carouselWidth > 0
+      ? Math.min(carouselWidth * (carouselWidth >= 768 ? 0.42 : 0.76), 640)
+      : CENTER_CARD_FALLBACK_WIDTH;
+  const sideStep = centerCardWidth * 0.62;
+  const farStep = centerCardWidth * 1.16;
   const embedUrl = useMemo(() => {
     if (!activeCard) {
       return null;
@@ -67,28 +94,36 @@ export default function HowToCard({ cards, shouldReveal }: HowToCardProps) {
       : null;
   }, [activeCard]);
 
+  const goToCard = useCallback(
+    (nextIndex: number) => {
+      if (totalCards === 0) return;
+
+      setActiveIndex(Math.min(Math.max(nextIndex, 0), totalCards - 1));
+    },
+    [totalCards],
+  );
+
+  const goBy = useCallback(
+    (direction: number) => {
+      setActiveIndex((currentIndex) => {
+        if (totalCards === 0) return currentIndex;
+
+        return Math.min(Math.max(currentIndex + direction, 0), totalCards - 1);
+      });
+    },
+    [totalCards],
+  );
+
   useEffect(() => {
-    const mediaQuery = window.matchMedia(`(min-width: ${MD_BREAKPOINT}px)`);
-    const updateIsDesktop = () => setIsDesktop(mediaQuery.matches);
+    if (!carouselRef.current) return;
 
-    updateIsDesktop();
-    mediaQuery.addEventListener("change", updateIsDesktop);
-
-    return () => mediaQuery.removeEventListener("change", updateIsDesktop);
-  }, []);
-
-  useEffect(() => {
-    if (!stackRef.current) return;
-
-    const updateCardWidth = () => {
-      if (stackRef.current) {
-        setCardWidth(stackRef.current.offsetWidth);
-      }
+    const updateCarouselWidth = () => {
+      setCarouselWidth(carouselRef.current?.offsetWidth ?? 0);
     };
-    const resizeObserver = new ResizeObserver(updateCardWidth);
+    const resizeObserver = new ResizeObserver(updateCarouselWidth);
 
-    updateCardWidth();
-    resizeObserver.observe(stackRef.current);
+    updateCarouselWidth();
+    resizeObserver.observe(carouselRef.current);
 
     return () => resizeObserver.disconnect();
   }, []);
@@ -114,54 +149,166 @@ export default function HowToCard({ cards, shouldReveal }: HowToCardProps) {
     };
   }, [activeCard]);
 
-  const mobileCardHeight = (cardWidth / MOBILE_CARD_WIDTH) * MOBILE_CARD_HEIGHT;
-  const mobileCardStep = mobileCardHeight + MOBILE_CARD_GAP;
-  const mobileStackHeight =
-    mobileCardHeight * visibleCards.length +
-    MOBILE_CARD_GAP * Math.max(0, visibleCards.length - 1);
-  const cardStepPercent = isDesktop
-    ? DESKTOP_CARD_STEP_PERCENT
-    : mobileCardStep;
-  const hiddenTopPercent = isDesktop
-    ? DESKTOP_HIDDEN_TOP_PERCENT
-    : mobileCardStep * 2;
-  const shouldShowCards = !isDesktop || shouldReveal;
+  useEffect(() => {
+    const handleWheel = (event: WheelEvent) => {
+      if (activeCard || totalCards <= 1 || !carouselRef.current) {
+        return;
+      }
+
+      const rect = carouselRef.current.getBoundingClientRect();
+      const viewportHeight = window.innerHeight;
+      const sectionIsPinned =
+        rect.top < viewportHeight * 0.74 && rect.bottom > viewportHeight * 0.28;
+
+      if (!sectionIsPinned) {
+        return;
+      }
+
+      const delta =
+        Math.abs(event.deltaX) > Math.abs(event.deltaY)
+          ? event.deltaX
+          : event.deltaY;
+
+      if (Math.abs(delta) < WHEEL_THRESHOLD) return;
+
+      const direction = delta > 0 ? 1 : -1;
+      const now = window.performance.now();
+      const section = document.getElementById(HOW_TO_CARD_CONTAINER_ID);
+      const sectionTop = section
+        ? section.getBoundingClientRect().top + window.scrollY
+        : null;
+
+      if (
+        direction < 0 &&
+        activeIndex === totalCards - 1 &&
+        sectionTop !== null &&
+        window.scrollY > sectionTop + 24 &&
+        rect.top < viewportHeight * 0.24
+      ) {
+        event.preventDefault();
+        event.stopPropagation();
+
+        if (isSnappingToSectionRef.current) {
+          return;
+        }
+
+        isSnappingToSectionRef.current = true;
+        cancelSectionSnapRef.current?.();
+        cancelSectionSnapRef.current = animateWindowScroll({
+          top: sectionTop,
+          duration: window.matchMedia("(prefers-reduced-motion: reduce)")
+            .matches
+            ? 0
+            : SNAP_SCROLL_DURATION,
+          onComplete: () => {
+            isSnappingToSectionRef.current = false;
+            cancelSectionSnapRef.current = null;
+            edgeExitAfterRef.current =
+              window.performance.now() + EDGE_EXIT_DELAY_MS;
+          },
+        });
+
+        return;
+      }
+
+      if (direction < 0 && activeIndex === 0) {
+        if (now < edgeExitAfterRef.current) {
+          event.preventDefault();
+          event.stopPropagation();
+        }
+
+        return;
+      }
+
+      if (direction > 0 && activeIndex === totalCards - 1) {
+        if (now < edgeExitAfterRef.current) {
+          event.preventDefault();
+          event.stopPropagation();
+        }
+
+        return;
+      }
+
+      event.preventDefault();
+      event.stopPropagation();
+
+      if (now - lastWheelAtRef.current < WHEEL_COOLDOWN_MS) {
+        return;
+      }
+
+      lastWheelAtRef.current = now;
+      const nextIndex = activeIndex + direction;
+
+      if (nextIndex === 0 || nextIndex === totalCards - 1) {
+        edgeExitAfterRef.current = now + EDGE_EXIT_DELAY_MS;
+      }
+
+      goBy(direction);
+    };
+
+    window.addEventListener("wheel", handleWheel, {
+      capture: true,
+      passive: false,
+    });
+
+    return () => {
+      window.removeEventListener("wheel", handleWheel, { capture: true });
+      cancelSectionSnapRef.current?.();
+    };
+  }, [activeCard, activeIndex, goBy, totalCards]);
+
+  const handleCardClick = (card: HeroVideoCard, index: number) => {
+    if (index !== activeIndex) {
+      goToCard(index);
+      return;
+    }
+
+    setActiveCard(card);
+  };
+
+  if (totalCards === 0) {
+    return null;
+  }
 
   return (
     <>
-      <div className="flex w-full self-end justify-center md:justify-end">
-        <motion.div
-          ref={stackRef}
-          initial="hidden"
-          animate={shouldShowCards ? "show" : "hidden"}
-          style={{ height: isDesktop ? undefined : mobileStackHeight }}
-          className="relative w-full md:aspect-[523/894] md:max-w-[475px]"
-        >
-          {visibleCards.map((card, index) => (
+      <div
+        ref={carouselRef}
+        className="relative ml-[calc(50%_-_50vw)] mt-[clamp(28px,calc((56/1920)*100vw),56px)] h-[clamp(300px,calc((560/1920)*100vw),560px)] w-screen self-start touch-pan-y overflow-visible"
+        aria-label="Making film carousel"
+      >
+        {visibleCards.map((card, index) => {
+          const offset = getCardOffset(index, activeIndex, totalCards);
+          const distance = Math.abs(offset);
+          const isVisible = distance <= 2;
+          const isActive = index === activeIndex;
+          const translateX =
+            offset === 0 ? 0 : Math.sign(offset) * (distance === 1 ? sideStep : farStep);
+
+          return (
             <motion.div
               key={card.id}
-              variants={{
-                hidden: {
-                  top: `${hiddenTopPercent}${isDesktop ? "%" : "px"}`,
-                  zIndex: visibleCards.length - index,
-                },
-                show: {
-                  top: `${index * cardStepPercent}${isDesktop ? "%" : "px"}`,
-                  zIndex: visibleCards.length - index,
-                  transition: {
-                    duration: isDesktop ? 0.7 : 0,
-                    delay: isDesktop ? 0.05 + index * 0.08 : 0,
-                    ease: [0.1, 1, 0.36, 1],
-                  },
-                },
+              initial={false}
+              animate={{
+                x: translateX,
+                scale: distance === 0 ? 1 : distance === 1 ? 0.74 : 0.54,
+                opacity: isVisible ? (distance === 2 ? 0.66 : 1) : 0,
+                zIndex: 10 - distance,
+                filter: distance === 0 ? "brightness(1)" : "brightness(0.72)",
               }}
-              className="absolute left-0 w-full"
+              transition={{ duration: 0.58, ease: [0.22, 1, 0.36, 1] }}
+              className="absolute left-1/2 top-1/2 w-[min(76vw,360px)] [translate:-50%_-50%] md:w-[min(42vw,640px)]"
+              style={{ pointerEvents: isVisible ? "auto" : "none" }}
             >
               <button
                 type="button"
                 aria-label={`${card.title} video`}
-                onClick={() => setActiveCard(card)}
-                className="group relative block aspect-[335/188] w-full overflow-hidden rounded-[8px] border border-[#16161A] bg-[#17171A] text-left shadow-[0_18px_42px_rgba(0,0,0,0.36)] md:aspect-[523/293]"
+                aria-current={isActive ? "true" : undefined}
+                onClick={(event) => {
+                  event.stopPropagation();
+                  handleCardClick(card, index);
+                }}
+                className="group relative block aspect-[335/188] w-full overflow-hidden rounded-[8px] border border-[#16161A] bg-[#17171A] text-left shadow-[0_24px_68px_rgba(0,0,0,0.42)] outline-none transition focus-visible:ring-2 focus-visible:ring-white/70 md:aspect-[523/293]"
               >
                 {card.thumbnailUrl ? (
                   <span
@@ -174,19 +321,21 @@ export default function HowToCard({ cards, shouldReveal }: HowToCardProps) {
                 )}
                 <span className="absolute inset-0 bg-[linear-gradient(180deg,rgba(0,0,0,0.08)_0%,rgba(0,0,0,0.64)_100%)] opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
                 <span className="absolute inset-0 bg-black/35 opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
-                <span className="absolute left-1/2 top-1/2 inline-flex h-[39px] -translate-x-1/2 -translate-y-1/2 items-center gap-2 rounded-full border border-white/45 bg-white/20 px-5 text-[13px] font-medium text-white opacity-0 shadow-[0_12px_36px_rgba(0,0,0,0.28)] backdrop-blur-md transition duration-300 group-hover:opacity-100 group-focus-visible:opacity-100">
-                  <Play
-                    aria-hidden="true"
-                    size={14}
-                    fill="currentColor"
-                    strokeWidth={0}
-                  />
-                  지금 재생하기
-                </span>
+                {isActive ? (
+                  <span className="absolute left-1/2 top-1/2 inline-flex h-[39px] -translate-x-1/2 -translate-y-1/2 items-center gap-2 rounded-full border border-white/45 bg-white/20 px-5 text-[13px] font-medium text-white opacity-0 shadow-[0_12px_36px_rgba(0,0,0,0.28)] backdrop-blur-md transition duration-300 group-hover:opacity-100 group-focus-visible:opacity-100">
+                    <Play
+                      aria-hidden="true"
+                      size={14}
+                      fill="currentColor"
+                      strokeWidth={0}
+                    />
+                    지금 재생하기
+                  </span>
+                ) : null}
               </button>
             </motion.div>
-          ))}
-        </motion.div>
+          );
+        })}
       </div>
 
       {activeCard ? (

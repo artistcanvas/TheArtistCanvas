@@ -55,7 +55,7 @@ export async function getHeroVideoCards(): Promise<HeroVideoCard[]> {
   }
 
   const rows = (await response.json()) as SupabaseHeroVideoCardRow[];
-  const cards = rows.map(mapHeroVideoCard).slice(0, 3);
+  const cards = rows.map(mapHeroVideoCard).slice(0, 10);
 
   return cards.length > 0 ? cards : fallbackHeroVideoCards;
 }

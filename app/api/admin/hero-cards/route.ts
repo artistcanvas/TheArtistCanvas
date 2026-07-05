@@ -23,6 +23,7 @@ type SupabaseAdminHeroCardRow = {
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+const MAX_HERO_CARDS = 10;
 
 async function supabaseRequest<T>(
   path: string,
@@ -48,7 +49,9 @@ async function supabaseRequest<T>(
     throw new Error(message || `Supabase request failed: ${response.status}`);
   }
 
-  return (await response.json()) as T;
+  const text = await response.text();
+
+  return (text ? JSON.parse(text) : undefined) as T;
 }
 
 function parsePosition(value: unknown) {
@@ -56,7 +59,7 @@ function parsePosition(value: unknown) {
     return null;
   }
 
-  return value >= 1 && value <= 3 ? value : null;
+  return value >= 1 && value <= MAX_HERO_CARDS ? value : null;
 }
 
 export async function GET(request: Request) {
@@ -104,7 +107,7 @@ export async function POST(request: Request) {
 
   if (!position) {
     return Response.json(
-      { error: "Position must be 1, 2, or 3." },
+      { error: `Position must be between 1 and ${MAX_HERO_CARDS}.` },
       { status: 400 }
     );
   }
@@ -155,6 +158,50 @@ export async function POST(request: Request) {
       {
         error:
           error instanceof Error ? error.message : "Could not save hero card.",
+      },
+      { status: 500 }
+    );
+  }
+}
+
+export async function DELETE(request: Request) {
+  let body: AdminHeroCardRequestBody;
+
+  try {
+    body = (await request.json()) as AdminHeroCardRequestBody;
+  } catch {
+    return Response.json({ error: "Invalid JSON body." }, { status: 400 });
+  }
+
+  const adminError = await assertAdmin(request, body);
+
+  if (adminError) {
+    return adminError;
+  }
+
+  if (typeof body.id !== "string" || !body.id.trim()) {
+    return Response.json({ error: "Hero card id is required." }, { status: 400 });
+  }
+
+  try {
+    await supabaseRequest<unknown>(
+      `/rest/v1/hero_video_cards?id=eq.${encodeURIComponent(body.id.trim())}`,
+      {
+        method: "DELETE",
+        headers: {
+          Prefer: "return=minimal",
+        },
+      }
+    );
+
+    revalidatePath("/");
+
+    return Response.json({ ok: true });
+  } catch (error) {
+    return Response.json(
+      {
+        error:
+          error instanceof Error ? error.message : "Could not delete hero card.",
       },
       { status: 500 }
     );
