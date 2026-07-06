@@ -9,6 +9,7 @@ import {
   useRef,
   useState,
 } from "react";
+import HowToCarouselControls from "./HowToCarouselControls";
 import type { HeroVideoCard } from "./heroVideoCardTypes";
 import { animateWindowScroll } from "./scrollAnimation";
 
@@ -337,6 +338,13 @@ export default function HowToCard({ cards }: HowToCardProps) {
           );
         })}
       </div>
+
+      <HowToCarouselControls
+        activeIndex={activeIndex}
+        totalCards={totalCards}
+        onPrevious={() => goBy(-1)}
+        onNext={() => goBy(1)}
+      />
 
       {activeCard ? (
         <div

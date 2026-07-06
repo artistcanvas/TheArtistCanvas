@@ -30,13 +30,25 @@ function FooterContactItem({ link }: { link: FooterContactLink }) {
   );
 }
 
+function getFooterMarginTop(pathname: string) {
+  if (pathname === "/contact") {
+    return "mt-0";
+  }
+
+  if (pathname === "/") {
+    return "mt-[120px]";
+  }
+
+  return "mt-[200px]";
+}
+
 export function FooterContent({
   footerLinks,
 }: {
   footerLinks: FooterContactLink[];
 }) {
   const pathname = usePathname();
-  const footerMarginTop = pathname === "/contact" ? "mt-0" : "mt-[200px]";
+  const footerMarginTop = getFooterMarginTop(pathname);
 
   return (
     <footer
