@@ -71,9 +71,22 @@ export const arial = localFont({
 export const metadata: Metadata = {
   title: "TAC",
   description: "The Artist Canvas",
+  keywords: [
+    "아티스트캔버스",
+    "theartistcanvas",
+    "TAC",
+    "artistcanvas",
+    "오픈캔버스",
+  ],
   metadataBase: new URL(
     process.env.NEXT_PUBLIC_SITE_URL ?? "https://tac-landing-bay.vercel.app/",
   ),
+  verification: {
+    google: "4uFDUJ2S37ZVQB9Kc3z2beBr4OaVwRwoGkxD0rAZacE",
+    other: {
+      "naver-site-verification": "9735c9eba4d67ba7f9406a1737ea696b78d2acdd",
+    },
+  },
   icons: {
     icon: "/tac-favicon.png",
     shortcut: "/tac-favicon.png",

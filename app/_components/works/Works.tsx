@@ -39,11 +39,13 @@ function PplPartnerCard({ partner }: { partner: PplPartner }) {
 export default function Works({ worksData }: { worksData: WorksData }) {
   const [activeTab, setActiveTab] = useState<WorkViewTab>("Original");
   const [activeCategoryId, setActiveCategoryId] = useState(
-    worksData.Original.categories[0]?.id ?? ""
+    worksData.Original.categories[0]?.id ?? "",
   );
 
   const isPplTab = activeTab === "PPL";
-  const categories = isWorkTab(activeTab) ? worksData[activeTab].categories : [];
+  const categories = isWorkTab(activeTab)
+    ? worksData[activeTab].categories
+    : [];
   const works = isWorkTab(activeTab) ? worksData[activeTab].works : [];
 
   const filteredWorks = activeCategoryId
@@ -56,7 +58,7 @@ export default function Works({ worksData }: { worksData: WorksData }) {
   const handleTabChange = (tab: WorkViewTab) => {
     setActiveTab(tab);
     setActiveCategoryId(
-      isWorkTab(tab) ? worksData[tab].categories[0]?.id ?? "" : ""
+      isWorkTab(tab) ? (worksData[tab].categories[0]?.id ?? "") : "",
     );
   };
 
@@ -66,9 +68,9 @@ export default function Works({ worksData }: { worksData: WorksData }) {
         title="WORKS"
         des={
           <>
-            제작사에서 직접 만든 오리지널 콘텐츠부터 브랜드 작업까지,
+            제작사에서 직접 만든 오리지널 콘텐츠부터 브랜드 작업까지
             <br />
-            아티스트캔버스의 모든 작업물을 소개합니다.
+            아티스트캔버스의 모든 작업물을 소개합니다
           </>
         }
       />
@@ -114,35 +116,42 @@ export default function Works({ worksData }: { worksData: WorksData }) {
           <div className="mt-[20px] flex gap-[7px] overflow-x-auto md:mt-[25px] md:gap-[8px]">
             {categories.map((category) => {
               const isActive = category.id === activeCategoryId;
+              const showCategoryImage = activeTab !== "Project";
 
               return (
                 <button
                   key={category.id}
                   type="button"
                   onClick={() => setActiveCategoryId(category.id)}
-                  className={`flex h-[32px] shrink-0 items-center gap-[8px] rounded-full border pr-[clamp(10px,calc((13/1920)*100vw),13px)] pl-[4px] text-[clamp(12px,calc((16/1920)*100vw),16px)] font-medium transition-colors md:h-[clamp(24px,calc((35/1920)*100vw),35px)] md:border-l-0 md:pl-0 ${
+                  className={`flex h-[32px] shrink-0 items-center rounded-full border text-[clamp(12px,calc((16/1920)*100vw),16px)] font-medium transition-colors md:h-[clamp(24px,calc((35/1920)*100vw),35px)] ${
+                    showCategoryImage
+                      ? "gap-[8px] pr-[clamp(10px,calc((13/1920)*100vw),13px)] pl-[4px] md:border-l-0 md:pl-0"
+                      : "px-[clamp(14px,calc((18/1920)*100vw),18px)]"
+                  } ${
                     isActive
                       ? "border-[#7F7F7F] bg-[#333333] text-white"
                       : "border-[#333333] text-[#7F7F7F] hover:border-[#8D8B91] hover:text-[#8D8B91]"
                   }`}
                 >
-                  <span
-                    aria-hidden="true"
-                    className={`relative size-[clamp(24px,calc((35/1920)*100vw),35px)] overflow-hidden rounded-full border ${
-                      isActive ? "border-[#7F7F7F]" : "border-[#333333]"
-                    }`}
-                    style={{ backgroundColor: category.color ?? "#333333" }}
-                  >
-                    {category.profileImageUrl ? (
-                      <span
-                        aria-hidden="true"
-                        className="block size-full bg-cover bg-center"
-                        style={{
-                          backgroundImage: `url(${category.profileImageUrl})`,
-                        }}
-                      />
-                    ) : null}
-                  </span>
+                  {showCategoryImage ? (
+                    <span
+                      aria-hidden="true"
+                      className={`relative size-[clamp(24px,calc((35/1920)*100vw),35px)] overflow-hidden rounded-full border ${
+                        isActive ? "border-[#7F7F7F]" : "border-[#333333]"
+                      }`}
+                      style={{ backgroundColor: category.color ?? "#333333" }}
+                    >
+                      {category.profileImageUrl ? (
+                        <span
+                          aria-hidden="true"
+                          className="block size-full bg-cover bg-center"
+                          style={{
+                            backgroundImage: `url(${category.profileImageUrl})`,
+                          }}
+                        />
+                      ) : null}
+                    </span>
+                  ) : null}
                   {category.label}
                 </button>
               );

@@ -1,6 +1,7 @@
 import { revalidatePath } from "next/cache";
 import { getYouTubeMetadata } from "../../../_lib/youtube";
 import type { WorkTab } from "../../../_components/works/workTypes";
+import { projectWorkCategoryLabels } from "../../../_components/works/workTypes";
 import { assertAdmin } from "../_lib/auth";
 
 type AdminWorkRequestBody = {
@@ -23,7 +24,11 @@ type SupabaseTypeRow = {
 
 type SupabaseCategoryRow = {
   id: string;
+  tab: WorkTab;
   label: string;
+  profile_image_url: string | null;
+  youtube_channel_id: string | null;
+  sort_order: number;
 };
 
 type SupabaseAdminWorkRow = {
@@ -49,12 +54,23 @@ type SupabaseAdminWorkRow = {
 };
 
 const workTabs: WorkTab[] = ["Original", "Brand & ppl", "Project"];
+const projectWorkCategorySet = new Set<string>(projectWorkCategoryLabels);
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
 function isWorkTab(value: unknown): value is WorkTab {
   return typeof value === "string" && workTabs.includes(value as WorkTab);
+}
+
+function getProjectCategoryLabel(value: unknown) {
+  if (typeof value !== "string" || !value.trim()) {
+    return null;
+  }
+
+  const label = value.trim();
+
+  return projectWorkCategorySet.has(label) ? label : null;
 }
 
 function isStringArray(value: unknown): value is string[] {
@@ -95,8 +111,8 @@ async function getOptions() {
     supabaseRequest<SupabaseTypeRow[]>(
       "/rest/v1/work_types?select=id,label&order=label.asc"
     ),
-    supabaseRequest<Array<SupabaseCategoryRow & { tab: WorkTab }>>(
-      "/rest/v1/work_categories?select=id,tab,label&order=tab.asc,sort_order.asc,label.asc"
+    supabaseRequest<SupabaseCategoryRow[]>(
+      "/rest/v1/work_categories?select=id,tab,label,profile_image_url,youtube_channel_id,sort_order&order=tab.asc,sort_order.asc,label.asc"
     ),
     supabaseRequest<SupabaseAdminWorkRow[]>(
       `/rest/v1/works?select=${select}&order=tab.asc,sort_order.asc,created_at.desc`
@@ -219,7 +235,17 @@ export async function POST(request: Request) {
     );
   }
 
-  const categoryLabel = metadata.channelName;
+  const projectCategoryLabel =
+    body.tab === "Project" ? getProjectCategoryLabel(body.categoryLabel) : null;
+
+  if (body.tab === "Project" && !projectCategoryLabel) {
+    return Response.json(
+      { error: "Project sub tab is required." },
+      { status: 400 }
+    );
+  }
+
+  const categoryLabel = projectCategoryLabel ?? metadata.channelName;
 
   try {
     const [type, category] = await Promise.all([
@@ -227,8 +253,9 @@ export async function POST(request: Request) {
       upsertCategory({
         tab: body.tab,
         label: categoryLabel,
-        youtubeChannelId: metadata.channelId,
-        profileImageUrl: metadata.channelProfileImageUrl,
+        youtubeChannelId: body.tab === "Project" ? null : metadata.channelId,
+        profileImageUrl:
+          body.tab === "Project" ? null : metadata.channelProfileImageUrl,
       }),
     ]);
 
@@ -319,6 +346,49 @@ export async function PATCH(request: Request) {
     }
   }
 
+  if (body.action === "reorderCategories") {
+    if (!isStringArray(body.ids)) {
+      return Response.json(
+        { error: "Category ids are required." },
+        { status: 400 }
+      );
+    }
+
+    try {
+      await Promise.all(
+        body.ids.map((id, index) =>
+          supabaseRequest(
+            `/rest/v1/work_categories?id=eq.${id}`,
+            {
+              method: "PATCH",
+              headers: {
+                Prefer: "return=representation",
+              },
+              body: JSON.stringify({
+                sort_order: index,
+                updated_at: new Date().toISOString(),
+              }),
+            }
+          )
+        )
+      );
+
+      revalidatePath("/work");
+
+      return Response.json({ ok: true });
+    } catch (error) {
+      return Response.json(
+        {
+          error:
+            error instanceof Error
+              ? error.message
+              : "Could not reorder categories.",
+        },
+        { status: 500 }
+      );
+    }
+  }
+
   if (typeof body.id !== "string" || !body.id.trim()) {
     return Response.json({ error: "Work id is required." }, { status: 400 });
   }
@@ -356,7 +426,17 @@ export async function PATCH(request: Request) {
     );
   }
 
-  const categoryLabel = metadata.channelName;
+  const projectCategoryLabel =
+    body.tab === "Project" ? getProjectCategoryLabel(body.categoryLabel) : null;
+
+  if (body.tab === "Project" && !projectCategoryLabel) {
+    return Response.json(
+      { error: "Project sub tab is required." },
+      { status: 400 }
+    );
+  }
+
+  const categoryLabel = projectCategoryLabel ?? metadata.channelName;
 
   try {
     const [type, category] = await Promise.all([
@@ -364,8 +444,9 @@ export async function PATCH(request: Request) {
       upsertCategory({
         tab: body.tab,
         label: categoryLabel,
-        youtubeChannelId: metadata.channelId,
-        profileImageUrl: metadata.channelProfileImageUrl,
+        youtubeChannelId: body.tab === "Project" ? null : metadata.channelId,
+        profileImageUrl:
+          body.tab === "Project" ? null : metadata.channelProfileImageUrl,
       }),
     ]);
 

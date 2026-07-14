@@ -54,15 +54,27 @@ export const fallbackWorksData: WorksData = {
   Project: {
     categories: [
       {
-        id: "film",
-        label: "Film",
+        id: "music-video",
+        label: "뮤직 비디오",
         color: "#FF9D71",
         profileImageUrl: null,
       },
       {
-        id: "collaboration",
-        label: "Collaboration",
+        id: "ad-video",
+        label: "광고 영상",
         color: "#8D4CFF",
+        profileImageUrl: null,
+      },
+      {
+        id: "corporate-video",
+        label: "기업 영상",
+        color: "#3DA5FF",
+        profileImageUrl: null,
+      },
+      {
+        id: "live-content",
+        label: "라이브 콘텐츠",
+        color: "#45D483",
         profileImageUrl: null,
       },
     ],
@@ -72,7 +84,7 @@ export const fallbackWorksData: WorksData = {
         title: "Project Film Title",
         type: "PROJECT FILM",
         description: "프로젝트 전체 흐름을 보여주는 영상",
-        categoryId: "film",
+        categoryId: "music-video",
         youtubeUrl: "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
       },
     ],

@@ -1,9 +1,8 @@
 "use client";
 
 import {
-  ArrowDown,
-  ArrowUp,
   Check,
+  GripVertical,
   Loader2,
   Pencil,
   Plus,
@@ -12,8 +11,9 @@ import {
   Upload,
   X,
 } from "lucide-react";
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { DragEvent, FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import type { ArtistTab } from "../_components/artist/Artist";
+import { hasSameOrder, reorderByDrop } from "./adminDragSort";
 
 type AdminArtist = {
   id: string;
@@ -57,6 +57,11 @@ export default function AdminArtistsForm({
   const [isSaving, setIsSaving] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
+  const [draggedArtistId, setDraggedArtistId] = useState<string | null>(null);
+  const [artistDragOrderIds, setArtistDragOrderIds] = useState<string[] | null>(
+    null
+  );
+  const artistDroppedRef = useRef(false);
 
   const isEditMode = Boolean(editingArtistId);
   const isWithArtist = role === "WITH";
@@ -64,6 +69,22 @@ export default function AdminArtistsForm({
     () => artists.filter((artist) => artist.role === role),
     [artists, role]
   );
+  const displayedArtists = useMemo(() => {
+    if (!artistDragOrderIds) {
+      return filteredArtists;
+    }
+
+    const artistsById = new Map(
+      filteredArtists.map((artist) => [artist.id, artist])
+    );
+    const orderedArtists = artistDragOrderIds
+      .map((id) => artistsById.get(id))
+      .filter((artist): artist is AdminArtist => Boolean(artist));
+
+    return orderedArtists.length === filteredArtists.length
+      ? orderedArtists
+      : filteredArtists;
+  }, [artistDragOrderIds, filteredArtists]);
   const activeListLabel = role === "WITH" ? "등록된 With" : "등록된 MCN";
 
   const resetForm = (nextRole: ArtistTab = "WITH") => {
@@ -217,19 +238,10 @@ export default function AdminArtistsForm({
     setStatus("이미지를 업로드했습니다.");
   };
 
-  const reorderArtists = async (artistId: string, direction: -1 | 1) => {
-    const currentIndex = filteredArtists.findIndex((artist) => artist.id === artistId);
-    const nextIndex = currentIndex + direction;
-
-    if (currentIndex < 0 || nextIndex < 0 || nextIndex >= filteredArtists.length) {
+  const saveArtistOrder = async (nextArtists: AdminArtist[]) => {
+    if (hasSameOrder(filteredArtists, nextArtists)) {
       return;
     }
-
-    const nextArtists = [...filteredArtists];
-    [nextArtists[currentIndex], nextArtists[nextIndex]] = [
-      nextArtists[nextIndex],
-      nextArtists[currentIndex],
-    ];
 
     setStatus("Artist 순서를 저장하는 중입니다.");
 
@@ -251,6 +263,26 @@ export default function AdminArtistsForm({
 
     await loadArtists(password);
     setStatus("Artist 순서를 저장했습니다.");
+  };
+
+  const dropArtist = (event: DragEvent<HTMLDivElement>, targetId: string) => {
+    event.preventDefault();
+    artistDroppedRef.current = true;
+    const nextArtists = reorderByDrop(displayedArtists, draggedArtistId, targetId);
+    setDraggedArtistId(null);
+    void saveArtistOrder(nextArtists).finally(() => setArtistDragOrderIds(null));
+  };
+
+  const previewArtistMove = (targetId: string) => {
+    if (!draggedArtistId) {
+      return;
+    }
+
+    const nextArtists = reorderByDrop(displayedArtists, draggedArtistId, targetId);
+
+    if (!hasSameOrder(displayedArtists, nextArtists)) {
+      setArtistDragOrderIds(nextArtists.map((artist) => artist.id));
+    }
   };
 
   const deleteArtist = async (artist: AdminArtist) => {
@@ -298,20 +330,54 @@ export default function AdminArtistsForm({
         </button>
 
         <div className="max-h-[360px] space-y-2 overflow-y-auto pr-1">
-          {filteredArtists.length > 0 ? (
-            filteredArtists.map((artist, index) => {
+          {displayedArtists.length > 0 ? (
+            displayedArtists.map((artist) => {
               const isActive = artist.id === editingArtistId;
 
               return (
                 <div
                   key={artist.id}
-                  className={`w-full rounded-[8px] border p-3 text-left transition ${
+                  data-drag-card
+                  onDragOver={(event) => {
+                    event.preventDefault();
+                    previewArtistMove(artist.id);
+                  }}
+                  onDrop={(event) => dropArtist(event, artist.id)}
+                  className={`grid grid-cols-[auto_1fr_auto] gap-2 rounded-[8px] border p-3 transition duration-150 ${
                     isActive
                       ? "border-[#8D4CFF] bg-[#171122]"
-                      : "border-[#222226] bg-[#101012] hover:border-[#4C4B52]"
+                      : draggedArtistId === artist.id
+                        ? "border-[#8D4CFF] bg-[#171122]/70 opacity-45"
+                        : "border-[#222226] bg-[#101012] hover:border-[#4C4B52]"
                   }`}
                 >
-                  <div className="grid grid-cols-[1fr_auto] gap-2">
+                  <button
+                    type="button"
+                    draggable
+                    onDragStart={(event) => {
+                      artistDroppedRef.current = false;
+                      setDraggedArtistId(artist.id);
+                      setArtistDragOrderIds(displayedArtists.map((item) => item.id));
+                      event.dataTransfer.effectAllowed = "move";
+                      event.dataTransfer.setData("text/plain", artist.id);
+                      const card = event.currentTarget.closest("[data-drag-card]");
+                      if (card instanceof HTMLElement) {
+                        event.dataTransfer.setDragImage(card, 24, 24);
+                      }
+                    }}
+                    onDragEnd={() => {
+                      setDraggedArtistId(null);
+                      if (!artistDroppedRef.current) {
+                        setArtistDragOrderIds(null);
+                      }
+                      artistDroppedRef.current = false;
+                    }}
+                    aria-label={`${artist.name} order move`}
+                    className="flex size-8 cursor-grab items-center justify-center rounded-[6px] border border-[#303036] text-[#B9B8C0] transition hover:border-[#8D4CFF] hover:text-white active:cursor-grabbing"
+                  >
+                    <GripVertical size={15} />
+                  </button>
+                  <div className="contents">
                     <button
                       type="button"
                       onClick={() => selectArtist(artist)}
@@ -324,30 +390,12 @@ export default function AdminArtistsForm({
                         {artist.is_published ? "공개" : "비공개"}
                       </span>
                     </button>
-                    <div className="grid grid-cols-2 gap-1">
-                      <button
-                        type="button"
-                        onClick={() => reorderArtists(artist.id, -1)}
-                        disabled={index === 0}
-                        aria-label={`${artist.name} 위로 이동`}
-                        className="flex size-7 items-center justify-center rounded-[6px] border border-[#303036] text-[#B9B8C0] transition hover:border-[#8D4CFF] hover:text-white disabled:opacity-30"
-                      >
-                        <ArrowUp size={14} />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => reorderArtists(artist.id, 1)}
-                        disabled={index === filteredArtists.length - 1}
-                        aria-label={`${artist.name} 아래로 이동`}
-                        className="flex size-7 items-center justify-center rounded-[6px] border border-[#303036] text-[#B9B8C0] transition hover:border-[#8D4CFF] hover:text-white disabled:opacity-30"
-                      >
-                        <ArrowDown size={14} />
-                      </button>
+                    <div className="contents">
                       <button
                         type="button"
                         onClick={() => deleteArtist(artist)}
                         aria-label={`${artist.name} 삭제`}
-                        className="col-span-2 flex h-7 items-center justify-center rounded-[6px] border border-[#303036] text-[#B9B8C0] transition hover:border-[#FF6B6B] hover:text-[#FF9A9A]"
+                        className="flex size-8 items-center justify-center rounded-[6px] border border-[#303036] text-[#B9B8C0] transition hover:border-[#FF6B6B] hover:text-[#FF9A9A]"
                       >
                         <Trash2 size={14} />
                       </button>

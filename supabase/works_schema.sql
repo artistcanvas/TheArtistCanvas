@@ -113,6 +113,27 @@ create unique index if not exists works_youtube_video_id_idx
 create index if not exists ppl_partners_sort_idx
   on public.ppl_partners (sort_order, created_at desc);
 
+insert into public.work_categories (
+  tab,
+  label,
+  color,
+  sort_order,
+  youtube_channel_id,
+  profile_image_url
+)
+values
+  ('Project', '뮤직 비디오', '#FF9D71', 0, null, null),
+  ('Project', '광고 영상', '#8D4CFF', 1, null, null),
+  ('Project', '기업 영상', '#3DA5FF', 2, null, null),
+  ('Project', '라이브 콘텐츠', '#45D483', 3, null, null)
+on conflict (tab, label) do update
+set
+  color = excluded.color,
+  sort_order = excluded.sort_order,
+  youtube_channel_id = null,
+  profile_image_url = null,
+  updated_at = now();
+
 create or replace view public.original_works as
 select * from public.works where tab = 'Original';
 

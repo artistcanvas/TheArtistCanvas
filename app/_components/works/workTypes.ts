@@ -44,6 +44,16 @@ export const workTabs: WorkViewTab[] = [
 
 export const workDataTabs: WorkTab[] = ["Original", "Brand & ppl", "Project"];
 
+export const projectWorkCategoryLabels = [
+  "뮤직 비디오",
+  "광고 영상",
+  "기업 영상",
+  "라이브 콘텐츠",
+] as const;
+
+export type ProjectWorkCategoryLabel =
+  (typeof projectWorkCategoryLabels)[number];
+
 export const workTabLabels: Record<WorkViewTab, string> = {
   Original: "자체 채널",
   "Brand & ppl": "브랜드 채널",

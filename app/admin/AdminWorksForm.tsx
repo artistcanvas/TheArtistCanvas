@@ -1,10 +1,9 @@
 "use client";
 
 import {
-  ArrowDown,
-  ArrowUp,
   Check,
   Eye,
+  GripVertical,
   Loader2,
   Pencil,
   Plus,
@@ -12,9 +11,10 @@ import {
   Trash2,
   X,
 } from "lucide-react";
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { DragEvent, FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import type { WorkTab, WorkViewTab } from "../_components/works/workTypes";
 import { workTabLabels } from "../_components/works/workTypes";
+import { hasSameOrder, reorderByDrop } from "./adminDragSort";
 
 type YouTubeMetadata = {
   source: "youtube-data-api" | "youtube-oembed" | "saved";
@@ -58,9 +58,18 @@ type PplPartner = {
   created_at: string;
 };
 
+type AdminCategory = {
+  id: string;
+  tab: WorkTab;
+  label: string;
+  profile_image_url: string | null;
+  youtube_channel_id: string | null;
+  sort_order: number;
+};
+
 type AdminOptions = {
   types: Array<{ id: string; label: string }>;
-  categories: Array<{ id: string; tab: WorkTab; label: string }>;
+  categories: AdminCategory[];
   works: AdminWork[];
 };
 
@@ -111,6 +120,18 @@ export default function AdminWorksForm({ adminPassword }: AdminWorksFormProps) {
   const [isSaving, setIsSaving] = useState(false);
   const [isSavingPpl, setIsSavingPpl] = useState(false);
   const [isUploadingLogo, setIsUploadingLogo] = useState(false);
+  const [draggedWorkId, setDraggedWorkId] = useState<string | null>(null);
+  const [draggedCategoryId, setDraggedCategoryId] = useState<string | null>(null);
+  const [draggedPplId, setDraggedPplId] = useState<string | null>(null);
+  const [workDragOrderIds, setWorkDragOrderIds] = useState<string[] | null>(null);
+  const [categoryDragOrderIds, setCategoryDragOrderIds] = useState<string[] | null>(
+    null
+  );
+  const [pplDragOrderIds, setPplDragOrderIds] = useState<string[] | null>(null);
+  const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null);
+  const workDroppedRef = useRef(false);
+  const categoryDroppedRef = useRef(false);
+  const pplDroppedRef = useRef(false);
 
   const isEditMode = Boolean(editingWorkId);
   const isPplEditMode = Boolean(editingPplId);
@@ -123,16 +144,74 @@ export default function AdminWorksForm({ adminPassword }: AdminWorksFormProps) {
         : [],
     [options.categories, tab]
   );
-  const filteredWorks = useMemo(
+  const displayedCategories = useMemo(() => {
+    if (!categoryDragOrderIds) {
+      return categoriesByTab;
+    }
+
+    const categoriesById = new Map(
+      categoriesByTab.map((category) => [category.id, category])
+    );
+    const orderedCategories = categoryDragOrderIds
+      .map((id) => categoriesById.get(id))
+      .filter((category): category is AdminCategory => Boolean(category));
+
+    return orderedCategories.length === categoriesByTab.length
+      ? orderedCategories
+      : categoriesByTab;
+  }, [categoriesByTab, categoryDragOrderIds]);
+  const effectiveSelectedCategoryId =
+    selectedCategoryId &&
+    categoriesByTab.some((category) => category.id === selectedCategoryId)
+      ? selectedCategoryId
+      : null;
+  const selectedCategory = effectiveSelectedCategoryId
+    ? categoriesByTab.find((category) => category.id === effectiveSelectedCategoryId)
+    : null;
+  const tabWorks = useMemo(
     () => (isWorkTab(tab) ? options.works.filter((work) => work.tab === tab) : []),
     [options.works, tab]
   );
+  const filteredWorks = useMemo(
+    () =>
+      effectiveSelectedCategoryId
+        ? tabWorks.filter((work) => work.category?.id === effectiveSelectedCategoryId)
+        : tabWorks,
+    [effectiveSelectedCategoryId, tabWorks]
+  );
+  const displayedWorks = useMemo(() => {
+    if (!workDragOrderIds) {
+      return filteredWorks;
+    }
+
+    const worksById = new Map(filteredWorks.map((work) => [work.id, work]));
+    const orderedWorks = workDragOrderIds
+      .map((id) => worksById.get(id))
+      .filter((work): work is AdminWork => Boolean(work));
+
+    return orderedWorks.length === filteredWorks.length ? orderedWorks : filteredWorks;
+  }, [filteredWorks, workDragOrderIds]);
+  const displayedPplPartners = useMemo(() => {
+    if (!pplDragOrderIds) {
+      return pplPartners;
+    }
+
+    const partnersById = new Map(pplPartners.map((partner) => [partner.id, partner]));
+    const orderedPartners = pplDragOrderIds
+      .map((id) => partnersById.get(id))
+      .filter((partner): partner is PplPartner => Boolean(partner));
+
+    return orderedPartners.length === pplPartners.length
+      ? orderedPartners
+      : pplPartners;
+  }, [pplDragOrderIds, pplPartners]);
   const activeListLabel = isPplTab ? "등록된 PPL" : "등록된 Works";
-  const activeListItems = isPplTab ? pplPartners : filteredWorks;
+  const activeListItems = isPplTab ? displayedPplPartners : displayedWorks;
 
   const resetWorkForm = () => {
     setEditingWorkId(null);
     setTab(isWorkTab(tab) ? tab : "Original");
+    setSelectedCategoryId(null);
     setYoutubeUrl("");
     setTypeLabel("");
     setCategoryLabel("");
@@ -260,6 +339,7 @@ export default function AdminWorksForm({ adminPassword }: AdminWorksFormProps) {
   const selectWork = (work: AdminWork) => {
     setEditingWorkId(work.id);
     setTab(work.tab);
+    setSelectedCategoryId(work.category?.id ?? null);
     setYoutubeUrl(work.youtube_url);
     setTypeLabel(work.type?.label ?? "");
     setCategoryLabel(work.category?.label ?? "");
@@ -313,6 +393,9 @@ export default function AdminWorksForm({ adminPassword }: AdminWorksFormProps) {
     setIsSaving(true);
     setStatus("");
 
+    const selectedProjectCategoryLabel =
+      tab === "Project" ? selectedCategory?.label ?? categoryLabel : categoryLabel;
+
     const response = await fetch("/api/admin/works", {
       method: isEditMode ? "PATCH" : "POST",
       headers: { "Content-Type": "application/json" },
@@ -322,7 +405,7 @@ export default function AdminWorksForm({ adminPassword }: AdminWorksFormProps) {
         tab,
         youtubeUrl,
         typeLabel,
-        categoryLabel,
+        categoryLabel: selectedProjectCategoryLabel,
         description,
         isPublished,
       }),
@@ -423,19 +506,10 @@ export default function AdminWorksForm({ adminPassword }: AdminWorksFormProps) {
     setStatus("로고 이미지를 업로드했습니다.");
   };
 
-  const reorderWorks = async (workId: string, direction: -1 | 1) => {
-    const currentIndex = filteredWorks.findIndex((work) => work.id === workId);
-    const nextIndex = currentIndex + direction;
-
-    if (currentIndex < 0 || nextIndex < 0 || nextIndex >= filteredWorks.length) {
+  const saveWorksOrder = async (nextWorks: AdminWork[]) => {
+    if (hasSameOrder(filteredWorks, nextWorks)) {
       return;
     }
-
-    const nextWorks = [...filteredWorks];
-    [nextWorks[currentIndex], nextWorks[nextIndex]] = [
-      nextWorks[nextIndex],
-      nextWorks[currentIndex],
-    ];
 
     setStatus("Works 순서를 저장하는 중입니다.");
 
@@ -459,19 +533,87 @@ export default function AdminWorksForm({ adminPassword }: AdminWorksFormProps) {
     setStatus("Works 순서를 저장했습니다.");
   };
 
-  const reorderPpl = async (partnerId: string, direction: -1 | 1) => {
-    const currentIndex = pplPartners.findIndex((partner) => partner.id === partnerId);
-    const nextIndex = currentIndex + direction;
+  const dropWork = (event: DragEvent<HTMLDivElement>, targetId: string) => {
+    event.preventDefault();
+    workDroppedRef.current = true;
+    const nextWorks = reorderByDrop(displayedWorks, draggedWorkId, targetId);
+    setDraggedWorkId(null);
+    void saveWorksOrder(nextWorks).finally(() => setWorkDragOrderIds(null));
+  };
 
-    if (currentIndex < 0 || nextIndex < 0 || nextIndex >= pplPartners.length) {
+  const previewWorkMove = (targetId: string) => {
+    if (!draggedWorkId) {
       return;
     }
 
-    const nextPartners = [...pplPartners];
-    [nextPartners[currentIndex], nextPartners[nextIndex]] = [
-      nextPartners[nextIndex],
-      nextPartners[currentIndex],
-    ];
+    const nextWorks = reorderByDrop(displayedWorks, draggedWorkId, targetId);
+
+    if (!hasSameOrder(displayedWorks, nextWorks)) {
+      setWorkDragOrderIds(nextWorks.map((work) => work.id));
+    }
+  };
+
+  const saveCategoryOrder = async (nextCategories: AdminCategory[]) => {
+    if (hasSameOrder(categoriesByTab, nextCategories)) {
+      return;
+    }
+
+    setStatus("Channel order is being saved.");
+
+    const response = await fetch("/api/admin/works", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        action: "reorderCategories",
+        password,
+        ids: nextCategories.map((category) => category.id),
+      }),
+    });
+    const data = await response.json();
+
+    if (!response.ok) {
+      setStatus(data.error ?? "Could not save channel order.");
+      return;
+    }
+
+    await loadOptions(password);
+    setStatus("Channel order has been saved.");
+  };
+
+  const dropCategory = (event: DragEvent<HTMLButtonElement>, targetId: string) => {
+    event.preventDefault();
+    categoryDroppedRef.current = true;
+    const nextCategories = reorderByDrop(
+      displayedCategories,
+      draggedCategoryId,
+      targetId
+    );
+    setDraggedCategoryId(null);
+    void saveCategoryOrder(nextCategories).finally(() =>
+      setCategoryDragOrderIds(null)
+    );
+  };
+
+  const previewCategoryMove = (targetId: string) => {
+    if (!draggedCategoryId) {
+      return;
+    }
+
+    const nextCategories = reorderByDrop(
+      displayedCategories,
+      draggedCategoryId,
+      targetId
+    );
+
+    if (!hasSameOrder(displayedCategories, nextCategories)) {
+      setCategoryDragOrderIds(nextCategories.map((category) => category.id));
+    }
+  };
+
+  const savePplOrder = async (nextPartners: PplPartner[]) => {
+    if (hasSameOrder(pplPartners, nextPartners)) {
+      return;
+    }
 
     setStatus("PPL 순서를 저장하는 중입니다.");
 
@@ -493,6 +635,26 @@ export default function AdminWorksForm({ adminPassword }: AdminWorksFormProps) {
 
     await loadPplPartners(password);
     setStatus("PPL 순서를 저장했습니다.");
+  };
+
+  const dropPpl = (event: DragEvent<HTMLDivElement>, targetId: string) => {
+    event.preventDefault();
+    pplDroppedRef.current = true;
+    const nextPartners = reorderByDrop(displayedPplPartners, draggedPplId, targetId);
+    setDraggedPplId(null);
+    void savePplOrder(nextPartners).finally(() => setPplDragOrderIds(null));
+  };
+
+  const previewPplMove = (targetId: string) => {
+    if (!draggedPplId) {
+      return;
+    }
+
+    const nextPartners = reorderByDrop(displayedPplPartners, draggedPplId, targetId);
+
+    if (!hasSameOrder(displayedPplPartners, nextPartners)) {
+      setPplDragOrderIds(nextPartners.map((partner) => partner.id));
+    }
   };
 
   const deleteWork = async (work: AdminWork) => {
@@ -554,7 +716,11 @@ export default function AdminWorksForm({ adminPassword }: AdminWorksFormProps) {
           <button
             key={item}
             type="button"
-            onClick={() => setTab(item)}
+            onClick={() => {
+              setTab(item);
+              setSelectedCategoryId(null);
+              setCategoryDragOrderIds(null);
+            }}
             className={`h-[46px] rounded-[8px] border text-[13px] font-bold uppercase tracking-[1.2px] transition ${
               isActive
                 ? "border-[#8D4CFF] bg-[#8D4CFF] text-white"
@@ -582,6 +748,79 @@ export default function AdminWorksForm({ adminPassword }: AdminWorksFormProps) {
             </p>
           </div>
 
+          {!isPplTab ? (
+            <div className="space-y-3">
+              <p className="text-[12px] font-semibold text-[#9A99A2]">채널명</p>
+              <div className="space-y-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSelectedCategoryId(null);
+                    if (tab === "Project") {
+                      setCategoryLabel("");
+                    }
+                  }}
+                  className={`flex min-h-[36px] w-full items-center rounded-full border px-3 text-left text-[12px] font-bold transition ${
+                    effectiveSelectedCategoryId === null
+                      ? "border-[#8D4CFF] bg-[#8D4CFF] text-white"
+                      : "border-[#2F2F35] text-[#A7A6AE] hover:border-[#8D4CFF] hover:text-white"
+                  }`}
+                >
+                  전체
+                </button>
+                {displayedCategories.map((category) => {
+                  const isActive = effectiveSelectedCategoryId === category.id;
+
+                  return (
+                    <button
+                      key={category.id}
+                      type="button"
+                      draggable
+                      onClick={() => {
+                        setSelectedCategoryId(category.id);
+                        if (tab === "Project") {
+                          setCategoryLabel(category.label);
+                        }
+                      }}
+                      onDragStart={(event) => {
+                        categoryDroppedRef.current = false;
+                        setDraggedCategoryId(category.id);
+                        setCategoryDragOrderIds(
+                          displayedCategories.map((item) => item.id)
+                        );
+                        event.dataTransfer.effectAllowed = "move";
+                        event.dataTransfer.setData("text/plain", category.id);
+                      }}
+                      onDragOver={(event) => {
+                        event.preventDefault();
+                        previewCategoryMove(category.id);
+                      }}
+                      onDrop={(event) => dropCategory(event, category.id)}
+                      onDragEnd={() => {
+                        setDraggedCategoryId(null);
+                        if (!categoryDroppedRef.current) {
+                          setCategoryDragOrderIds(null);
+                        }
+                        categoryDroppedRef.current = false;
+                      }}
+                      aria-label={`${category.label} channel`}
+                      className={`flex min-h-[36px] w-full min-w-0 cursor-grab items-center gap-2 rounded-full border px-3 py-1 text-left text-[12px] font-bold transition active:cursor-grabbing ${
+                        isActive
+                          ? "border-[#8D4CFF] bg-[#171122] text-white"
+                          : draggedCategoryId === category.id
+                            ? "border-[#8D4CFF] bg-[#171122]/70 text-white opacity-45"
+                            : "border-[#2F2F35] text-[#A7A6AE] hover:border-[#8D4CFF] hover:text-white"
+                      }`}
+                    >
+                      <GripVertical size={13} className="shrink-0" />
+                      <span className="truncate">{category.label}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          ) : null}
+
           <button
             type="button"
             onClick={isPplTab ? resetPplForm : resetWorkForm}
@@ -592,19 +831,53 @@ export default function AdminWorksForm({ adminPassword }: AdminWorksFormProps) {
           </button>
 
           <div className="max-h-[360px] space-y-2 overflow-y-auto pr-1">
-            {!isPplTab && filteredWorks.length > 0 ? (
-              filteredWorks.map((work, index) => {
+            {!isPplTab && displayedWorks.length > 0 ? (
+              displayedWorks.map((work) => {
                 const isActive = work.id === editingWorkId;
 
                 return (
                   <div
                     key={work.id}
-                    className={`grid grid-cols-[1fr_auto] gap-2 rounded-[8px] border p-3 transition ${
+                    data-drag-card
+                    onDragOver={(event) => {
+                      event.preventDefault();
+                      previewWorkMove(work.id);
+                    }}
+                    onDrop={(event) => dropWork(event, work.id)}
+                    className={`grid grid-cols-[auto_1fr_auto] gap-2 rounded-[8px] border p-3 transition duration-150 ${
                       isActive
                         ? "border-[#8D4CFF] bg-[#171122]"
-                        : "border-[#222226] bg-[#101012] hover:border-[#4C4B52]"
+                        : draggedWorkId === work.id
+                          ? "border-[#8D4CFF] bg-[#171122]/70 opacity-45"
+                          : "border-[#222226] bg-[#101012] hover:border-[#4C4B52]"
                     }`}
                   >
+                    <button
+                      type="button"
+                      draggable
+                      onDragStart={(event) => {
+                        workDroppedRef.current = false;
+                        setDraggedWorkId(work.id);
+                        setWorkDragOrderIds(displayedWorks.map((item) => item.id));
+                        event.dataTransfer.effectAllowed = "move";
+                        event.dataTransfer.setData("text/plain", work.id);
+                        const card = event.currentTarget.closest("[data-drag-card]");
+                        if (card instanceof HTMLElement) {
+                          event.dataTransfer.setDragImage(card, 24, 24);
+                        }
+                      }}
+                      onDragEnd={() => {
+                        setDraggedWorkId(null);
+                        if (!workDroppedRef.current) {
+                          setWorkDragOrderIds(null);
+                        }
+                        workDroppedRef.current = false;
+                      }}
+                      aria-label={`${work.title} 순서 이동`}
+                      className="flex size-8 cursor-grab items-center justify-center rounded-[6px] border border-[#303036] text-[#B9B8C0] transition hover:border-[#8D4CFF] hover:text-white active:cursor-grabbing"
+                    >
+                      <GripVertical size={15} />
+                    </button>
                     <button
                       type="button"
                       onClick={() => selectWork(work)}
@@ -617,50 +890,66 @@ export default function AdminWorksForm({ adminPassword }: AdminWorksFormProps) {
                         {work.is_published ? "공개" : "비공개"}
                       </span>
                     </button>
-                    <div className="grid grid-cols-2 gap-1">
-                      <button
-                        type="button"
-                        onClick={() => reorderWorks(work.id, -1)}
-                        disabled={index === 0}
-                        aria-label={`${work.title} 위로 이동`}
-                        className="flex size-7 items-center justify-center rounded-[6px] border border-[#303036] text-[#B9B8C0] transition hover:border-[#8D4CFF] hover:text-white disabled:opacity-30"
-                      >
-                        <ArrowUp size={14} />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => reorderWorks(work.id, 1)}
-                        disabled={index === filteredWorks.length - 1}
-                        aria-label={`${work.title} 아래로 이동`}
-                        className="flex size-7 items-center justify-center rounded-[6px] border border-[#303036] text-[#B9B8C0] transition hover:border-[#8D4CFF] hover:text-white disabled:opacity-30"
-                      >
-                        <ArrowDown size={14} />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => deleteWork(work)}
-                        aria-label={`${work.title} 삭제`}
-                        className="col-span-2 flex h-7 items-center justify-center rounded-[6px] border border-[#303036] text-[#B9B8C0] transition hover:border-[#FF6B6B] hover:text-[#FF9A9A]"
-                      >
-                        <Trash2 size={14} />
-                      </button>
-                    </div>
+                    <button
+                      type="button"
+                      onClick={() => deleteWork(work)}
+                      aria-label={`${work.title} 삭제`}
+                      className="flex size-8 items-center justify-center rounded-[6px] border border-[#303036] text-[#B9B8C0] transition hover:border-[#FF6B6B] hover:text-[#FF9A9A]"
+                    >
+                      <Trash2 size={14} />
+                    </button>
                   </div>
                 );
               })
-            ) : isPplTab && pplPartners.length > 0 ? (
-              pplPartners.map((partner, index) => {
+            ) : isPplTab && displayedPplPartners.length > 0 ? (
+              displayedPplPartners.map((partner) => {
                 const isActive = partner.id === editingPplId;
 
                 return (
                   <div
                     key={partner.id}
-                    className={`grid grid-cols-[1fr_auto] gap-2 rounded-[8px] border p-3 transition ${
+                    data-drag-card
+                    onDragOver={(event) => {
+                      event.preventDefault();
+                      previewPplMove(partner.id);
+                    }}
+                    onDrop={(event) => dropPpl(event, partner.id)}
+                    className={`grid grid-cols-[auto_1fr_auto] gap-2 rounded-[8px] border p-3 transition duration-150 ${
                       isActive
                         ? "border-[#FF9D71] bg-[#21140F]"
-                        : "border-[#222226] bg-[#101012] hover:border-[#4C4B52]"
+                        : draggedPplId === partner.id
+                          ? "border-[#FF9D71] bg-[#21140F]/70 opacity-45"
+                          : "border-[#222226] bg-[#101012] hover:border-[#4C4B52]"
                     }`}
                   >
+                    <button
+                      type="button"
+                      draggable
+                      onDragStart={(event) => {
+                        pplDroppedRef.current = false;
+                        setDraggedPplId(partner.id);
+                        setPplDragOrderIds(
+                          displayedPplPartners.map((item) => item.id)
+                        );
+                        event.dataTransfer.effectAllowed = "move";
+                        event.dataTransfer.setData("text/plain", partner.id);
+                        const card = event.currentTarget.closest("[data-drag-card]");
+                        if (card instanceof HTMLElement) {
+                          event.dataTransfer.setDragImage(card, 24, 24);
+                        }
+                      }}
+                      onDragEnd={() => {
+                        setDraggedPplId(null);
+                        if (!pplDroppedRef.current) {
+                          setPplDragOrderIds(null);
+                        }
+                        pplDroppedRef.current = false;
+                      }}
+                      aria-label={`${partner.name} 순서 이동`}
+                      className="flex size-8 cursor-grab items-center justify-center rounded-[6px] border border-[#303036] text-[#B9B8C0] transition hover:border-[#FF9D71] hover:text-white active:cursor-grabbing"
+                    >
+                      <GripVertical size={15} />
+                    </button>
                     <button
                       type="button"
                       onClick={() => selectPpl(partner)}
@@ -673,34 +962,14 @@ export default function AdminWorksForm({ adminPassword }: AdminWorksFormProps) {
                         {partner.website_url}
                       </span>
                     </button>
-                    <div className="grid grid-cols-2 gap-1">
-                      <button
-                        type="button"
-                        onClick={() => reorderPpl(partner.id, -1)}
-                        disabled={index === 0}
-                        aria-label={`${partner.name} 위로 이동`}
-                        className="flex size-7 items-center justify-center rounded-[6px] border border-[#303036] text-[#B9B8C0] transition hover:border-[#FF9D71] hover:text-white disabled:opacity-30"
-                      >
-                        <ArrowUp size={14} />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => reorderPpl(partner.id, 1)}
-                        disabled={index === pplPartners.length - 1}
-                        aria-label={`${partner.name} 아래로 이동`}
-                        className="flex size-7 items-center justify-center rounded-[6px] border border-[#303036] text-[#B9B8C0] transition hover:border-[#FF9D71] hover:text-white disabled:opacity-30"
-                      >
-                        <ArrowDown size={14} />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => deletePpl(partner)}
-                        aria-label={`${partner.name} 삭제`}
-                        className="col-span-2 flex h-7 items-center justify-center rounded-[6px] border border-[#303036] text-[#B9B8C0] transition hover:border-[#FF6B6B] hover:text-[#FF9A9A]"
-                      >
-                        <Trash2 size={14} />
-                      </button>
-                    </div>
+                    <button
+                      type="button"
+                      onClick={() => deletePpl(partner)}
+                      aria-label={`${partner.name} 삭제`}
+                      className="flex size-8 items-center justify-center rounded-[6px] border border-[#303036] text-[#B9B8C0] transition hover:border-[#FF6B6B] hover:text-[#FF9A9A]"
+                    >
+                      <Trash2 size={14} />
+                    </button>
                   </div>
                 );
               })

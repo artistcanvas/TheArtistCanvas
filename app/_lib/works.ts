@@ -1,7 +1,21 @@
 import { fallbackWorksData } from "../_components/works/workFallbackData";
-import type { PplPartner, Work, WorkCategory, WorksData, WorkTab } from "../_components/works/workTypes";
-import { workDataTabs } from "../_components/works/workTypes";
+import type {
+  PplPartner,
+  Work,
+  WorkCategory,
+  WorksData,
+  WorkTab,
+} from "../_components/works/workTypes";
+import { projectWorkCategoryLabels, workDataTabs } from "../_components/works/workTypes";
 import { getYouTubeThumbnailUrl, getYouTubeVideoId } from "./youtube";
+
+type SupabaseCategoryRow = {
+  id: string;
+  tab: WorkTab;
+  label: string;
+  color: string | null;
+  profile_image_url: string | null;
+};
 
 type SupabaseWorkRow = {
   id: string;
@@ -46,11 +60,59 @@ function emptyWorksData(): WorksData {
   };
 }
 
-function mapRowsToWorksData(rows: SupabaseWorkRow[]): WorksData {
+function mapCategory(row: SupabaseCategoryRow): WorkCategory {
+  return {
+    id: row.id,
+    label: row.label,
+    color: row.color,
+    profileImageUrl: row.profile_image_url,
+  };
+}
+
+function ensureProjectCategories(worksData: WorksData) {
+  const fallbackProjectCategories = fallbackWorksData.Project.categories;
+
+  projectWorkCategoryLabels.forEach((label) => {
+    const hasCategory = worksData.Project.categories.some(
+      (category) => category.label === label
+    );
+
+    if (!hasCategory) {
+      const fallbackCategory = fallbackProjectCategories.find(
+        (category) => category.label === label
+      );
+
+      worksData.Project.categories.push(
+        fallbackCategory ?? {
+          id: label,
+          label,
+          color: "#333333",
+          profileImageUrl: null,
+        }
+      );
+    }
+  });
+}
+
+function mapRowsToWorksData(
+  rows: SupabaseWorkRow[],
+  categoryRows: SupabaseCategoryRow[]
+): WorksData {
   const worksData = emptyWorksData();
   const categoryIdsByTab = new Map<WorkTab, Set<string>>(
     workDataTabs.map((tab) => [tab, new Set<string>()])
   );
+
+  categoryRows.forEach((category) => {
+    const categoryIds = categoryIdsByTab.get(category.tab);
+
+    if (!categoryIds?.has(category.id)) {
+      worksData[category.tab].categories.push(mapCategory(category));
+      categoryIds?.add(category.id);
+    }
+  });
+
+  ensureProjectCategories(worksData);
 
   rows.forEach((row) => {
     const category = row.category;
@@ -62,14 +124,15 @@ function mapRowsToWorksData(rows: SupabaseWorkRow[]): WorksData {
     const categoryIds = categoryIdsByTab.get(row.tab);
 
     if (!categoryIds?.has(category.id)) {
-      const mappedCategory: WorkCategory = {
-        id: category.id,
-        label: category.label,
-        color: category.color,
-        profileImageUrl: category.profile_image_url,
-      };
-
-      worksData[row.tab].categories.push(mappedCategory);
+      worksData[row.tab].categories.push(
+        mapCategory({
+          id: category.id,
+          tab: row.tab,
+          label: category.label,
+          color: category.color,
+          profile_image_url: category.profile_image_url,
+        })
+      );
       categoryIds?.add(category.id);
     }
 
@@ -101,6 +164,13 @@ export async function getWorksData(): Promise<WorksData> {
   workUrl.searchParams.set("is_published", "eq.true");
   workUrl.searchParams.set("order", "tab.asc,sort_order.asc,created_at.desc");
 
+  const categoryUrl = new URL("/rest/v1/work_categories", supabaseUrl);
+  categoryUrl.searchParams.set(
+    "select",
+    "id,tab,label,color,profile_image_url"
+  );
+  categoryUrl.searchParams.set("order", "tab.asc,sort_order.asc,created_at.asc");
+
   const pplUrl = new URL("/rest/v1/ppl_partners", supabaseUrl);
   pplUrl.searchParams.set("select", "id,name,website_url,logo_url");
   pplUrl.searchParams.set("is_published", "eq.true");
@@ -111,8 +181,9 @@ export async function getWorksData(): Promise<WorksData> {
     Authorization: `Bearer ${supabaseAnonKey}`,
   };
 
-  const [workResponse, pplResponse] = await Promise.all([
+  const [workResponse, categoryResponse, pplResponse] = await Promise.all([
     fetch(workUrl, { headers, next: { revalidate: 60 } }).catch(() => null),
+    fetch(categoryUrl, { headers, next: { revalidate: 60 } }).catch(() => null),
     fetch(pplUrl, { headers, next: { revalidate: 60 } }).catch(() => null),
   ]);
 
@@ -121,7 +192,10 @@ export async function getWorksData(): Promise<WorksData> {
   }
 
   const rows = (await workResponse.json()) as SupabaseWorkRow[];
-  const worksData = mapRowsToWorksData(rows);
+  const categoryRows = categoryResponse?.ok
+    ? ((await categoryResponse.json()) as SupabaseCategoryRow[])
+    : [];
+  const worksData = mapRowsToWorksData(rows, categoryRows);
 
   if (pplResponse?.ok) {
     const pplRows = (await pplResponse.json()) as SupabasePplPartnerRow[];
