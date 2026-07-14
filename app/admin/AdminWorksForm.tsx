@@ -580,7 +580,7 @@ export default function AdminWorksForm({ adminPassword }: AdminWorksFormProps) {
     setStatus("Channel order has been saved.");
   };
 
-  const dropCategory = (event: DragEvent<HTMLButtonElement>, targetId: string) => {
+  const dropCategory = (event: DragEvent<HTMLDivElement>, targetId: string) => {
     event.preventDefault();
     categoryDroppedRef.current = true;
     const nextCategories = reorderByDrop(
@@ -608,6 +608,53 @@ export default function AdminWorksForm({ adminPassword }: AdminWorksFormProps) {
     if (!hasSameOrder(displayedCategories, nextCategories)) {
       setCategoryDragOrderIds(nextCategories.map((category) => category.id));
     }
+  };
+
+  const deleteCategory = async (category: AdminCategory) => {
+    const categoryWorks = options.works.filter(
+      (work) => work.category?.id === category.id
+    );
+
+    if (
+      categoryWorks.length > 0 &&
+      !window.confirm(
+        `"${category.label}" 채널명을 삭제할까요?\n해당 채널명에 남아있는 영상도 함께 지워집니다.`
+      )
+    ) {
+      return;
+    }
+
+    const response = await fetch("/api/admin/works", {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        action: "deleteCategory",
+        password,
+        categoryId: category.id,
+      }),
+    });
+    const data = await response.json();
+
+    if (!response.ok) {
+      setStatus(data.error ?? "채널명을 삭제하지 못했습니다.");
+      return;
+    }
+
+    if (selectedCategoryId === category.id) {
+      setSelectedCategoryId(null);
+      setCategoryLabel("");
+    }
+
+    if (editingWorkId && categoryWorks.some((work) => work.id === editingWorkId)) {
+      resetWorkForm();
+    }
+
+    await loadOptions(password);
+    setStatus(
+      categoryWorks.length > 0
+        ? "채널명과 해당 영상을 삭제했습니다."
+        : "채널명을 삭제했습니다."
+    );
   };
 
   const savePplOrder = async (nextPartners: PplPartner[]) => {
@@ -658,10 +705,6 @@ export default function AdminWorksForm({ adminPassword }: AdminWorksFormProps) {
   };
 
   const deleteWork = async (work: AdminWork) => {
-    if (!window.confirm(`"${work.title}" 영상을 삭제할까요?`)) {
-      return;
-    }
-
     const response = await fetch("/api/admin/works", {
       method: "DELETE",
       headers: { "Content-Type": "application/json" },
@@ -679,7 +722,11 @@ export default function AdminWorksForm({ adminPassword }: AdminWorksFormProps) {
     }
 
     await loadOptions(password);
-    setStatus("영상을 삭제했습니다.");
+    setStatus(
+      data.deletedCategory
+        ? "영상과 빈 채널명을 삭제했습니다."
+        : "영상을 삭제했습니다."
+    );
   };
 
   const deletePpl = async (partner: PplPartner) => {
@@ -772,25 +819,8 @@ export default function AdminWorksForm({ adminPassword }: AdminWorksFormProps) {
                   const isActive = effectiveSelectedCategoryId === category.id;
 
                   return (
-                    <button
+                    <div
                       key={category.id}
-                      type="button"
-                      draggable
-                      onClick={() => {
-                        setSelectedCategoryId(category.id);
-                        if (tab === "Project") {
-                          setCategoryLabel(category.label);
-                        }
-                      }}
-                      onDragStart={(event) => {
-                        categoryDroppedRef.current = false;
-                        setDraggedCategoryId(category.id);
-                        setCategoryDragOrderIds(
-                          displayedCategories.map((item) => item.id)
-                        );
-                        event.dataTransfer.effectAllowed = "move";
-                        event.dataTransfer.setData("text/plain", category.id);
-                      }}
                       onDragOver={(event) => {
                         event.preventDefault();
                         previewCategoryMove(category.id);
@@ -804,7 +834,7 @@ export default function AdminWorksForm({ adminPassword }: AdminWorksFormProps) {
                         categoryDroppedRef.current = false;
                       }}
                       aria-label={`${category.label} channel`}
-                      className={`flex min-h-[36px] w-full min-w-0 cursor-grab items-center gap-2 rounded-full border px-3 py-1 text-left text-[12px] font-bold transition active:cursor-grabbing ${
+                      className={`grid min-h-[36px] w-full min-w-0 grid-cols-[auto_1fr_auto] items-center gap-1 rounded-full border px-2 py-1 text-left text-[12px] font-bold transition ${
                         isActive
                           ? "border-[#8D4CFF] bg-[#171122] text-white"
                           : draggedCategoryId === category.id
@@ -812,9 +842,48 @@ export default function AdminWorksForm({ adminPassword }: AdminWorksFormProps) {
                             : "border-[#2F2F35] text-[#A7A6AE] hover:border-[#8D4CFF] hover:text-white"
                       }`}
                     >
-                      <GripVertical size={13} className="shrink-0" />
-                      <span className="truncate">{category.label}</span>
-                    </button>
+                      <button
+                        type="button"
+                        draggable
+                        onDragStart={(event) => {
+                          categoryDroppedRef.current = false;
+                          setDraggedCategoryId(category.id);
+                          setCategoryDragOrderIds(
+                            displayedCategories.map((item) => item.id)
+                          );
+                          event.dataTransfer.effectAllowed = "move";
+                          event.dataTransfer.setData("text/plain", category.id);
+                        }}
+                        className="flex size-7 cursor-grab items-center justify-center rounded-full text-current transition hover:bg-white/10 active:cursor-grabbing"
+                        aria-label={`${category.label} 순서 이동`}
+                      >
+                        <GripVertical size={13} className="shrink-0" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSelectedCategoryId(category.id);
+                          if (tab === "Project") {
+                            setCategoryLabel(category.label);
+                          }
+                        }}
+                        className="min-w-0 truncate text-left"
+                      >
+                        {category.label}
+                      </button>
+                      {category.tab === "Project" ? (
+                        <span className="size-7" aria-hidden="true" />
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => deleteCategory(category)}
+                          aria-label={`${category.label} 채널명 삭제`}
+                          className="flex size-7 items-center justify-center rounded-full text-[#B9B8C0] transition hover:bg-[#351A1A] hover:text-[#FF9A9A]"
+                        >
+                          <Trash2 size={13} />
+                        </button>
+                      )}
+                    </div>
                   );
                 })}
               </div>

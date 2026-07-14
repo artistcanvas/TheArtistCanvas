@@ -8,6 +8,7 @@ type AdminWorkRequestBody = {
   password?: unknown;
   action?: unknown;
   id?: unknown;
+  categoryId?: unknown;
   ids?: unknown;
   tab?: unknown;
   youtubeUrl?: unknown;
@@ -50,6 +51,15 @@ type SupabaseAdminWorkRow = {
   type: {
     id: string;
     label: string;
+  } | null;
+};
+
+type SupabaseWorkDeleteTargetRow = {
+  id: string;
+  category_id: string;
+  category: {
+    id: string;
+    tab: WorkTab;
   } | null;
 };
 
@@ -501,12 +511,82 @@ export async function DELETE(request: Request) {
     return adminError;
   }
 
+  if (body.action === "deleteCategory") {
+    if (typeof body.categoryId !== "string" || !body.categoryId.trim()) {
+      return Response.json(
+        { error: "Category id is required." },
+        { status: 400 }
+      );
+    }
+
+    try {
+      const [category] = await supabaseRequest<SupabaseCategoryRow[]>(
+        `/rest/v1/work_categories?id=eq.${body.categoryId}&select=id,tab,label,profile_image_url,youtube_channel_id,sort_order`
+      );
+
+      if (!category) {
+        return Response.json(
+          { error: "Category was not found." },
+          { status: 404 }
+        );
+      }
+
+      if (category.tab === "Project") {
+        return Response.json(
+          { error: "Project sub tabs cannot be deleted here." },
+          { status: 400 }
+        );
+      }
+
+      const deletedWorks = await supabaseRequest<SupabaseAdminWorkRow[]>(
+        `/rest/v1/works?category_id=eq.${body.categoryId}`,
+        {
+          method: "DELETE",
+          headers: {
+            Prefer: "return=representation",
+          },
+        }
+      );
+
+      const deletedCategories = await supabaseRequest<SupabaseCategoryRow[]>(
+        `/rest/v1/work_categories?id=eq.${body.categoryId}`,
+        {
+          method: "DELETE",
+          headers: {
+            Prefer: "return=representation",
+          },
+        }
+      );
+
+      revalidatePath("/work");
+
+      return Response.json({
+        category: deletedCategories[0] ?? category,
+        deletedWorkCount: deletedWorks.length,
+      });
+    } catch (error) {
+      return Response.json(
+        {
+          error:
+            error instanceof Error
+              ? error.message
+              : "Could not delete category.",
+        },
+        { status: 500 }
+      );
+    }
+  }
+
   if (typeof body.id !== "string" || !body.id.trim()) {
     return Response.json({ error: "Work id is required." }, { status: 400 });
   }
 
   try {
-    const rows = await supabaseRequest(
+    const [targetWork] = await supabaseRequest<SupabaseWorkDeleteTargetRow[]>(
+      `/rest/v1/works?id=eq.${body.id}&select=id,category_id,category:work_categories(id,tab)`
+    );
+
+    const rows = await supabaseRequest<SupabaseAdminWorkRow[]>(
       `/rest/v1/works?id=eq.${body.id}`,
       {
         method: "DELETE",
@@ -516,9 +596,31 @@ export async function DELETE(request: Request) {
       }
     );
 
+    let deletedCategory: SupabaseCategoryRow | null = null;
+
+    if (targetWork?.category_id && targetWork.category?.tab !== "Project") {
+      const remainingWorks = await supabaseRequest<Array<{ id: string }>>(
+        `/rest/v1/works?category_id=eq.${targetWork.category_id}&select=id&limit=1`
+      );
+
+      if (remainingWorks.length === 0) {
+        const deletedCategories = await supabaseRequest<SupabaseCategoryRow[]>(
+          `/rest/v1/work_categories?id=eq.${targetWork.category_id}`,
+          {
+            method: "DELETE",
+            headers: {
+              Prefer: "return=representation",
+            },
+          }
+        );
+
+        deletedCategory = deletedCategories[0] ?? null;
+      }
+    }
+
     revalidatePath("/work");
 
-    return Response.json({ work: Array.isArray(rows) ? rows[0] : rows });
+    return Response.json({ work: rows[0] ?? null, deletedCategory });
   } catch (error) {
     return Response.json(
       {
