@@ -4,6 +4,9 @@ import { Nav } from "./_components/layout/Nav";
 import "./globals.css";
 import { Footer } from "./_components/layout/Footer";
 
+const siteUrl = new URL("https://www.the-artistcanvas.com");
+const metaImageUrl = new URL("/imgs/tac-meta.png?v=20260714", siteUrl);
+
 export const pretendard = localFont({
   src: [
     {
@@ -78,9 +81,10 @@ export const metadata: Metadata = {
     "artistcanvas",
     "오픈캔버스",
   ],
-  metadataBase: new URL(
-    process.env.NEXT_PUBLIC_SITE_URL ?? "https://tac-landing-bay.vercel.app/",
-  ),
+  metadataBase: siteUrl,
+  alternates: {
+    canonical: "/",
+  },
   verification: {
     google: "4uFDUJ2S37ZVQB9Kc3z2beBr4OaVwRwoGkxD0rAZacE",
     other: {
@@ -95,9 +99,12 @@ export const metadata: Metadata = {
   openGraph: {
     title: "The Artist Canvas",
     description: "The Artist Canvas",
+    url: "/",
     images: [
       {
-        url: "/tac-meta.png",
+        url: metaImageUrl,
+        width: 1600,
+        height: 800,
         alt: "The Artist Canvas",
       },
     ],
@@ -110,7 +117,9 @@ export const metadata: Metadata = {
     description: "The Artist Canvas",
     images: [
       {
-        url: "/tac-meta.png",
+        url: metaImageUrl,
+        width: 1600,
+        height: 800,
         alt: "The Artist Canvas",
       },
     ],
