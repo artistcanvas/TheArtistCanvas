@@ -72,8 +72,9 @@ export const arial = localFont({
 });
 
 export const metadata: Metadata = {
-  title: "TAC",
-  description: "The Artist Canvas",
+  title: "아티스트캔버스 | TAC",
+  description:
+    "아티스트캔버스(The Artist Canvas, TAC)는 아티스트와 콘텐츠를 연결하는 종합 콘텐츠 제작사입니다. 음악 콘텐츠, 유튜브 제작, 라이브 콘텐츠, 브랜드 IP 기획 및 제작을 전문으로 합니다.",
   keywords: [
     "아티스트캔버스",
     "theartistcanvas",
@@ -97,8 +98,9 @@ export const metadata: Metadata = {
     apple: "/tac-favicon.png",
   },
   openGraph: {
-    title: "The Artist Canvas",
-    description: "The Artist Canvas",
+    title: "아티스트캔버스 | TAC",
+    description:
+      "아티스트캔버스(The Artist Canvas, TAC)는 아티스트와 콘텐츠를 연결하는 종합 콘텐츠 제작사입니다. 음악 콘텐츠, 유튜브 제작, 라이브 콘텐츠, 브랜드 IP 기획 및 제작을 전문으로 합니다.",
     url: "/",
     images: [
       {
@@ -108,13 +110,14 @@ export const metadata: Metadata = {
         alt: "The Artist Canvas",
       },
     ],
-    siteName: "The Artist Canvas",
+    siteName: "아티스트캔버스 | TAC",
     type: "website",
   },
   twitter: {
     card: "summary_large_image",
-    title: "The Artist Canvas",
-    description: "The Artist Canvas",
+    title: "아티스트캔버스 | TAC",
+    description:
+      "아티스트캔버스(The Artist Canvas, TAC)는 아티스트와 콘텐츠를 연결하는 종합 콘텐츠 제작사입니다. 음악 콘텐츠, 유튜브 제작, 라이브 콘텐츠, 브랜드 IP 기획 및 제작을 전문으로 합니다.",
     images: [
       {
         url: metaImageUrl,
