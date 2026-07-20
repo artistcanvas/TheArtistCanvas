@@ -47,32 +47,6 @@ function pickLargestThumbnail(
   );
 }
 
-function decodeJsonString(value: string) {
-  try {
-    return JSON.parse(`"${value}"`) as string;
-  } catch {
-    return value;
-  }
-}
-
-async function getChannelNameFromWatchPage(youtubeUrl: string) {
-  const response = await fetch(youtubeUrl, {
-    next: { revalidate: 60 * 60 * 24 },
-  }).catch(() => null);
-
-  if (!response?.ok) {
-    return null;
-  }
-
-  const html = await response.text();
-  const bylineMatch =
-    html.match(/"shortBylineText":\{"runs":\[\{"text":"((?:\\.|[^"\\])+)"/) ??
-    html.match(/"attributedTitle":\{"content":"((?:\\.|[^"\\])+)"/);
-  const byline = bylineMatch?.[1] ? decodeJsonString(bylineMatch[1]) : null;
-
-  return byline?.trim() || null;
-}
-
 export function getYouTubeVideoId(youtubeUrl: string) {
   try {
     const url = new URL(youtubeUrl);
@@ -152,17 +126,14 @@ async function getMetadataWithYouTubeDataApi(
     }
   }
 
-  const watchPageChannelName = await getChannelNameFromWatchPage(
-    `https://www.youtube.com/watch?v=${video.id}`
-  );
-
   return {
     source: "youtube-data-api",
     videoId: video.id,
     title: snippet.title,
-    thumbnailUrl: pickLargestThumbnail(snippet.thumbnails) ?? getYouTubeThumbnailUrl(video.id),
+    thumbnailUrl:
+      pickLargestThumbnail(snippet.thumbnails) ?? getYouTubeThumbnailUrl(video.id),
     channelId: snippet.channelId ?? null,
-    channelName: watchPageChannelName ?? snippet.channelTitle,
+    channelName: snippet.channelTitle,
     channelProfileImageUrl,
   };
 }
@@ -189,15 +160,13 @@ async function getMetadataWithOEmbed(
     return null;
   }
 
-  const watchPageChannelName = await getChannelNameFromWatchPage(youtubeUrl);
-
   return {
     source: "youtube-oembed",
     videoId,
     title: data.title,
     thumbnailUrl: data.thumbnail_url ?? getYouTubeThumbnailUrl(videoId),
     channelId: null,
-    channelName: watchPageChannelName ?? data.author_name,
+    channelName: data.author_name,
     channelProfileImageUrl: null,
   };
 }
