@@ -125,7 +125,7 @@ export default function AdminContactForm({
         password,
         inquiryType,
         email,
-        sortOrder,
+        sortOrder: isEditMode ? sortOrder : filteredEmails.length,
         isPublished,
       }),
     });
@@ -367,7 +367,7 @@ export default function AdminContactForm({
           })}
         </div>
 
-        <div className="grid gap-4 md:grid-cols-[1fr_160px]">
+        <div className="grid gap-4">
           <label className="block">
             <span className="text-[13px] font-semibold text-[#9A99A2]">
               이메일
@@ -378,18 +378,6 @@ export default function AdminContactForm({
               onChange={(event) => setEmail(event.target.value)}
               placeholder="hello@tac.com"
               className="mt-2 h-[46px] w-full rounded-[8px] border border-[#2A2A2E] bg-[#101012] px-4 text-[14px] outline-none transition placeholder:text-[#4B4A52] focus:border-[#8D4CFF]"
-            />
-          </label>
-
-          <label className="block">
-            <span className="text-[13px] font-semibold text-[#9A99A2]">
-              정렬 순서
-            </span>
-            <input
-              type="number"
-              value={sortOrder}
-              onChange={(event) => setSortOrder(event.target.value)}
-              className="mt-2 h-[46px] w-full rounded-[8px] border border-[#2A2A2E] bg-[#101012] px-4 text-[14px] outline-none transition focus:border-[#8D4CFF]"
             />
           </label>
         </div>

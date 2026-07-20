@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  ArrowUpRight,
   Check,
   GripVertical,
   Loader2,
@@ -31,11 +32,22 @@ type AdminArtist = {
   created_at: string;
 };
 
+type YouTubePreviewMetadata = {
+  channelName: string;
+};
+
 const tabs: ArtistTab[] = ["WITH", "MCN"];
 
 type AdminArtistsFormProps = {
   adminPassword: string;
 };
+
+function formatChannelName(channelName: string) {
+  return channelName
+    .replace(/\s+및\s+/g, " · ")
+    .replace(/\s*·\s*/g, " · ")
+    .trim();
+}
 
 export default function AdminArtistsForm({
   adminPassword,
@@ -53,6 +65,9 @@ export default function AdminArtistsForm({
   const [careers, setCareers] = useState("");
   const [sortOrder, setSortOrder] = useState("0");
   const [isPublished, setIsPublished] = useState(true);
+  const [youtubePreviewChannelName, setYoutubePreviewChannelName] =
+    useState("");
+  const [isYoutubePreviewLoading, setIsYoutubePreviewLoading] = useState(false);
   const [status, setStatus] = useState("");
   const [isSaving, setIsSaving] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -96,6 +111,7 @@ export default function AdminArtistsForm({
     setHeightCm("");
     setEducation("");
     setYoutubeUrl("");
+    setYoutubePreviewChannelName("");
     setCareers("");
     setSortOrder("0");
     setIsPublished(true);
@@ -128,6 +144,34 @@ export default function AdminArtistsForm({
     setStatus("Artist 관리자 연결을 확인했습니다.");
   };
 
+  const loadYoutubePreviewMetadata = async (
+    nextYoutubeUrl = youtubeUrl,
+    shouldLoad = isWithArtist
+  ) => {
+    if (!shouldLoad || !nextYoutubeUrl.trim()) {
+      setYoutubePreviewChannelName("");
+      return;
+    }
+
+    setIsYoutubePreviewLoading(true);
+
+    const response = await fetch("/api/youtube/metadata", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ youtubeUrl: nextYoutubeUrl }),
+    }).catch(() => null);
+
+    setIsYoutubePreviewLoading(false);
+
+    if (!response?.ok) {
+      setYoutubePreviewChannelName("");
+      return;
+    }
+
+    const data = (await response.json()) as YouTubePreviewMetadata;
+    setYoutubePreviewChannelName(formatChannelName(data.channelName));
+  };
+
   useEffect(() => {
     const timer = window.setTimeout(() => {
       void loadArtists(adminPassword);
@@ -149,6 +193,10 @@ export default function AdminArtistsForm({
     setCareers(artist.careers.join("\n"));
     setSortOrder(artist.sort_order.toString());
     setIsPublished(artist.is_published);
+    void loadYoutubePreviewMetadata(
+      artist.youtube_url ?? "",
+      artist.role === "WITH"
+    );
     setStatus("수정할 Artist를 불러왔습니다.");
   };
 
@@ -176,13 +224,13 @@ export default function AdminArtistsForm({
         password,
         role,
         name,
-        profileImageUrl,
+        profileImageUrl: isWithArtist ? "" : profileImageUrl,
         birthDate: isWithArtist ? "" : birthDate,
         heightCm: isWithArtist ? "" : heightCm,
         education: isWithArtist ? "" : education,
         youtubeUrl,
         careers: isWithArtist ? "" : careers,
-        sortOrder: isWithArtist && !isEditMode ? filteredArtists.length : sortOrder,
+        sortOrder: isEditMode ? sortOrder : filteredArtists.length,
         isFeatured: false,
         isPublished,
       }),
@@ -522,18 +570,6 @@ export default function AdminArtistsForm({
                 className="mt-2 h-[46px] w-full rounded-[8px] border border-[#2A2A2E] bg-[#101012] px-4 text-[14px] outline-none transition placeholder:text-[#4B4A52] focus:border-[#8D4CFF]"
               />
             </label>
-
-            <label className="block">
-              <span className="text-[13px] font-semibold text-[#9A99A2]">
-                정렬 순서
-              </span>
-              <input
-                type="number"
-                value={sortOrder}
-                onChange={(event) => setSortOrder(event.target.value)}
-                className="mt-2 h-[46px] w-full rounded-[8px] border border-[#2A2A2E] bg-[#101012] px-4 text-[14px] outline-none transition focus:border-[#8D4CFF]"
-              />
-            </label>
           </div>
         ) : null}
 
@@ -551,37 +587,39 @@ export default function AdminArtistsForm({
           </label>
         ) : null}
 
-        <div className="grid gap-4 md:grid-cols-[1fr_auto]">
-          <label className="block">
-            <span className="text-[13px] font-semibold text-[#9A99A2]">
-              이미지 URL
-            </span>
-            <input
-              type="url"
-              value={profileImageUrl}
-              onChange={(event) => setProfileImageUrl(event.target.value)}
-              placeholder="업로드하거나 직접 입력"
-              className="mt-2 h-[46px] w-full rounded-[8px] border border-[#2A2A2E] bg-[#101012] px-4 text-[14px] outline-none transition placeholder:text-[#4B4A52] focus:border-[#8D4CFF]"
-            />
-          </label>
-          <label className="mt-auto inline-flex h-[46px] cursor-pointer items-center justify-center gap-2 rounded-[8px] border border-[#3A3A40] px-5 text-[14px] font-bold text-white transition hover:border-[#8D4CFF]">
-            {isUploading ? (
-              <Loader2 size={16} className="animate-spin" />
-            ) : (
-              <Upload size={16} />
-            )}
-            업로드
-            <input
-              type="file"
-              accept="image/*"
-              disabled={isUploading}
-              onChange={(event) =>
-                void uploadImage(event.currentTarget.files?.[0] ?? null)
-              }
-              className="sr-only"
-            />
-          </label>
-        </div>
+        {!isWithArtist ? (
+          <div className="grid gap-4 md:grid-cols-[1fr_auto]">
+            <label className="block">
+              <span className="text-[13px] font-semibold text-[#9A99A2]">
+                이미지 URL
+              </span>
+              <input
+                type="url"
+                value={profileImageUrl}
+                onChange={(event) => setProfileImageUrl(event.target.value)}
+                placeholder="업로드하거나 직접 입력"
+                className="mt-2 h-[46px] w-full rounded-[8px] border border-[#2A2A2E] bg-[#101012] px-4 text-[14px] outline-none transition placeholder:text-[#4B4A52] focus:border-[#8D4CFF]"
+              />
+            </label>
+            <label className="mt-auto inline-flex h-[46px] cursor-pointer items-center justify-center gap-2 rounded-[8px] border border-[#3A3A40] px-5 text-[14px] font-bold text-white transition hover:border-[#8D4CFF]">
+              {isUploading ? (
+                <Loader2 size={16} className="animate-spin" />
+              ) : (
+                <Upload size={16} />
+              )}
+              업로드
+              <input
+                type="file"
+                accept="image/*"
+                disabled={isUploading}
+                onChange={(event) =>
+                  void uploadImage(event.currentTarget.files?.[0] ?? null)
+                }
+                className="sr-only"
+              />
+            </label>
+          </div>
+        ) : null}
 
         <label className="block">
           <span className="text-[13px] font-semibold text-[#9A99A2]">
@@ -590,7 +628,11 @@ export default function AdminArtistsForm({
           <input
             type="url"
             value={youtubeUrl}
-            onChange={(event) => setYoutubeUrl(event.target.value)}
+            onChange={(event) => {
+              setYoutubeUrl(event.target.value);
+              setYoutubePreviewChannelName("");
+            }}
+            onBlur={() => void loadYoutubePreviewMetadata()}
             placeholder="https://www.youtube.com/@..."
             className="mt-2 h-[46px] w-full rounded-[8px] border border-[#2A2A2E] bg-[#101012] px-4 text-[14px] outline-none transition placeholder:text-[#4B4A52] focus:border-[#8D4CFF]"
           />
@@ -655,23 +697,53 @@ export default function AdminArtistsForm({
 
       <aside className="space-y-4 xl:sticky xl:top-[120px] xl:h-fit">
         <div className="overflow-hidden rounded-[8px] border border-[#222226] bg-[#101012]">
-          <div
-            className="aspect-[302/347] bg-cover bg-center"
-            style={{
-              backgroundImage: profileImageUrl
-                ? `url(${profileImageUrl})`
-                : "linear-gradient(145deg,#28282B 0%,#202025 35%,#101014 100%)",
-            }}
-          />
-          <div className="space-y-2 p-5">
-            <p className="text-[11px] font-bold uppercase tracking-[1.5px] text-[#8D4CFF]">
-              Artist Preview
-            </p>
-            <h2 className="text-[20px] font-bold text-white">
-              {name || "Artist 이름"}
-            </h2>
-            <p className="text-[12px] font-bold text-[#6E6C76]">{role}</p>
-          </div>
+          {isWithArtist ? (
+            <div className="p-5">
+              <p className="text-[11px] font-bold uppercase tracking-[1.5px] text-[#8D4CFF]">
+                Artist Preview
+              </p>
+              <div className="relative mt-5 min-h-[88px] overflow-hidden rounded-[8px] bg-[#18181A] text-left">
+                <div aria-hidden="true" className="absolute inset-0">
+                  <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(13,13,15,0.96)_0%,rgba(5,5,7,0.99)_100%)]" />
+                  <div className="absolute inset-x-0 top-0 h-[58%] bg-gradient-to-b from-[#171719] to-transparent" />
+                </div>
+                <div className="relative z-10 flex min-h-[88px] flex-col justify-center px-[20px] py-[18px]">
+                  <h2 className="max-w-[calc(100%-82px)] truncate text-[15px] font-bold leading-none text-[#3B3940]">
+                    {name || "Creator Name"}
+                  </h2>
+                  <p className="mt-[12px] max-w-[calc(100%-82px)] truncate text-[12px] font-bold leading-none text-[#242329]">
+                    {isYoutubePreviewLoading
+                      ? "Loading"
+                      : youtubePreviewChannelName || "Channel Name"}
+                  </p>
+                </div>
+                <span className="absolute right-[18px] top-[22px] z-10 flex items-center gap-[4px] text-[11px] font-bold tracking-[1.3px] text-[#8D4CFF]">
+                  VIDEO
+                  <ArrowUpRight aria-hidden="true" size={12} strokeWidth={2.4} />
+                </span>
+              </div>
+            </div>
+          ) : (
+            <>
+              <div
+                className="aspect-[302/347] bg-cover bg-center"
+                style={{
+                  backgroundImage: profileImageUrl
+                    ? `url(${profileImageUrl})`
+                    : "linear-gradient(145deg,#28282B 0%,#202025 35%,#101014 100%)",
+                }}
+              />
+              <div className="space-y-2 p-5">
+                <p className="text-[11px] font-bold uppercase tracking-[1.5px] text-[#8D4CFF]">
+                  Artist Preview
+                </p>
+                <h2 className="text-[20px] font-bold text-white">
+                  {name || "Artist 이름"}
+                </h2>
+                <p className="text-[12px] font-bold text-[#6E6C76]">{role}</p>
+              </div>
+            </>
+          )}
         </div>
 
         <a

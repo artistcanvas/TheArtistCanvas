@@ -15,6 +15,7 @@ function makeArtists(role: ArtistRole, name: string, education: string) {
     height: "170cm",
     education,
     youtubeUrl: "https://www.youtube.com/",
+    youtubeChannelName: education,
     careers: sampleCareers,
     isFeatured: index === 3,
   }));

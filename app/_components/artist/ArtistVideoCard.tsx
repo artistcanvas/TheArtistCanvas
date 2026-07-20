@@ -3,46 +3,46 @@
 import { ArrowUpRight } from "lucide-react";
 import type { ArtistProfile } from "./Artist";
 
+function formatInfo(info: string) {
+  return info.replace(/\s+및\s+/g, " · ").replace(/\s*·\s*/g, " · ").trim();
+}
+
 export default function ArtistVideoCard({ artist }: { artist: ArtistProfile }) {
+  const info = formatInfo(
+    artist.youtubeChannelName ?? artist.careers[0] ?? "YouTube"
+  );
+
   const cardContent = (
     <>
-      <div className="relative aspect-[335/335] overflow-hidden bg-[#101014] md:aspect-[302/347]">
-        {artist.profileImageUrl ? (
-          <div
-            aria-hidden="true"
-            className="absolute inset-0 bg-cover bg-center opacity-80 transition duration-300 group-hover:scale-[1.03] group-hover:opacity-100"
-            style={{ backgroundImage: `url(${artist.profileImageUrl})` }}
-          />
-        ) : (
-          <>
-            <div className="absolute inset-0 bg-[linear-gradient(145deg,#28282B_0%,#202025_27%,#101014_66%,#050506_100%)]" />
-            <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_46%,rgba(255,255,255,0.12),transparent_21%),linear-gradient(116deg,rgba(255,255,255,0.045)_0%,transparent_31%,rgba(255,255,255,0.025)_60%,transparent_100%)]" />
-          </>
-        )}
-        <div className="absolute inset-x-0 bottom-0 h-[37%] bg-gradient-to-t from-black via-black/54 to-transparent opacity-0 transition-opacity duration-200 group-hover:opacity-100 group-focus-visible:opacity-100" />
-
-        {artist.youtubeUrl ? (
-          <span className="absolute bottom-[27px] left-[20px] flex translate-y-[6px] items-center gap-[4px] text-[11px] font-bold text-[#8D4CFF] opacity-0 transition-[opacity,transform] duration-200 group-hover:translate-y-0 group-hover:opacity-100 group-focus-visible:translate-y-0 group-focus-visible:opacity-100 md:bottom-[31px] md:left-[20px] md:text-[clamp(11px,calc((12/1920)*100vw),12px)]">
-            VIDEO
-            <ArrowUpRight aria-hidden="true" size={10} strokeWidth={2.4} />
-          </span>
-        ) : null}
+      <div
+        aria-hidden="true"
+        className="absolute inset-0 opacity-0 transition-opacity duration-200 group-hover:opacity-100 group-focus-visible:opacity-100"
+      >
+        <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(13,13,15,0.96)_0%,rgba(5,5,7,0.99)_100%)]" />
+        <div className="absolute inset-x-0 top-0 h-[58%] bg-gradient-to-b from-[#171719] to-transparent" />
       </div>
 
-      <div className="bg-[#111113] px-[20px] pb-[17px] pt-[16px] md:px-[20px] md:pb-[18px] md:pt-[18px]">
-        <h3 className="text-[14px] font-bold leading-none text-white md:text-[12px]">
+      <div className="relative z-10 flex h-full min-h-[88px] flex-col justify-center px-[20px] py-[18px] md:min-h-[88px]">
+        <h3 className="max-w-[calc(100%-82px)] truncate text-[15px] font-bold leading-none text-[#E9E8ED] transition-colors duration-200 group-hover:text-[#3B3940] group-focus-visible:text-[#3B3940] md:text-[clamp(14px,calc((16/1920)*100vw),16px)]">
           {artist.name}
         </h3>
-        <p className="mt-[8px] text-[10px] font-bold leading-none text-[#5B5A62] md:text-[9px]">
-          WITH
+        <p className="mt-[12px] max-w-[calc(100%-82px)] truncate text-[12px] font-bold leading-none text-[#55545B] transition-colors duration-200 group-hover:text-[#242329] group-focus-visible:text-[#242329] md:text-[clamp(11px,calc((12/1920)*100vw),12px)]">
+          {info}
         </p>
       </div>
+
+      {artist.youtubeUrl ? (
+        <span className="absolute right-[18px] top-[22px] z-10 flex translate-y-[4px] items-center gap-[4px] text-[11px] font-bold tracking-[1.3px] text-[#8D4CFF] opacity-0 transition-[opacity,transform] duration-200 group-hover:translate-y-0 group-hover:opacity-100 group-focus-visible:translate-y-0 group-focus-visible:opacity-100 md:text-[clamp(11px,calc((12/1920)*100vw),12px)]">
+          VIDEO
+          <ArrowUpRight aria-hidden="true" size={12} strokeWidth={2.4} />
+        </span>
+      ) : null}
     </>
   );
 
   if (!artist.youtubeUrl) {
     return (
-      <div className="group block w-full overflow-hidden rounded-[6px] bg-[#09090B] text-left">
+      <div className="group relative block w-full overflow-hidden rounded-[8px] bg-[#18181A] text-left">
         {cardContent}
       </div>
     );
@@ -54,7 +54,7 @@ export default function ArtistVideoCard({ artist }: { artist: ArtistProfile }) {
       target="_blank"
       rel="noreferrer"
       aria-label={`${artist.name} video`}
-      className="group block w-full overflow-hidden rounded-[6px] bg-[#09090B] text-left focus:outline-none focus:ring-2 focus:ring-white/50"
+      className="group relative block w-full overflow-hidden rounded-[8px] bg-[#18181A] text-left transition-colors duration-200 hover:bg-[#111113] focus:outline-none focus:ring-2 focus:ring-white/50"
     >
       {cardContent}
     </a>

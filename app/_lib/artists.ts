@@ -4,6 +4,7 @@ import type {
   ArtistRole,
   ArtistTab,
 } from "../_components/artist/Artist";
+import { getYouTubeMetadata } from "./youtube";
 
 type SupabaseArtistRow = {
   id: string;
@@ -35,39 +36,72 @@ function formatBirthDate(value: string | null) {
   return value ? value.replaceAll("-", ".") : undefined;
 }
 
-function mapRowsToArtistsData(rows: SupabaseArtistRow[]) {
+function formatChannelName(channelName: string) {
+  return channelName
+    .replace(/\s+및\s+/g, " · ")
+    .replace(/\s*·\s*/g, " · ")
+    .trim();
+}
+
+async function getYouTubeChannelName(youtubeUrl: string | null) {
+  if (!youtubeUrl) {
+    return undefined;
+  }
+
+  const metadata = await getYouTubeMetadata(youtubeUrl).catch(() => null);
+
+  return metadata?.channelName
+    ? formatChannelName(metadata.channelName)
+    : undefined;
+}
+
+async function mapRowsToArtistsData(rows: SupabaseArtistRow[]) {
   const artistsData = emptyArtistsData();
 
-  [...rows]
-    .sort((a, b) => {
-      const tabA = a.role === "MCN" ? "MCN" : "WITH";
-      const tabB = b.role === "MCN" ? "MCN" : "WITH";
+  const artists = await Promise.all(
+    [...rows]
+      .sort((a, b) => {
+        const tabA = a.role === "MCN" ? "MCN" : "WITH";
+        const tabB = b.role === "MCN" ? "MCN" : "WITH";
 
-      if (tabA !== tabB) {
-        return artistTabs.indexOf(tabA) - artistTabs.indexOf(tabB);
-      }
+        if (tabA !== tabB) {
+          return artistTabs.indexOf(tabA) - artistTabs.indexOf(tabB);
+        }
 
-      if (a.sort_order !== b.sort_order) {
-        return a.sort_order - b.sort_order;
-      }
+        if (a.sort_order !== b.sort_order) {
+          return a.sort_order - b.sort_order;
+        }
 
-      return Date.parse(b.created_at) - Date.parse(a.created_at);
-    })
-    .forEach((row) => {
-    const tab: ArtistTab = row.role === "MCN" ? "MCN" : "WITH";
+        return Date.parse(b.created_at) - Date.parse(a.created_at);
+      })
+      .map(async (row) => {
+        const tab: ArtistTab = row.role === "MCN" ? "MCN" : "WITH";
+        const youtubeChannelName =
+          tab === "WITH"
+            ? await getYouTubeChannelName(row.youtube_url)
+            : undefined;
 
-    artistsData[tab].push({
-      id: row.id,
-      name: row.name,
-      role: row.role,
-      profileImageUrl: row.profile_image_url,
-      birthDate: formatBirthDate(row.birth_date),
-      height: row.height_cm ? `${row.height_cm}cm` : undefined,
-      education: row.education ?? undefined,
-      youtubeUrl: row.youtube_url ?? undefined,
-      careers: row.careers ?? [],
-      isFeatured: row.is_featured,
-    });
+        return {
+          tab,
+          artist: {
+            id: row.id,
+            name: row.name,
+            role: row.role,
+            profileImageUrl: row.profile_image_url,
+            birthDate: formatBirthDate(row.birth_date),
+            height: row.height_cm ? `${row.height_cm}cm` : undefined,
+            education: row.education ?? undefined,
+            youtubeUrl: row.youtube_url ?? undefined,
+            youtubeChannelName,
+            careers: row.careers ?? [],
+            isFeatured: row.is_featured,
+          },
+        };
+      })
+  );
+
+  artists.forEach(({ tab, artist }) => {
+    artistsData[tab].push(artist);
   });
 
   return artistsData;
@@ -99,7 +133,7 @@ export async function getArtistsData(): Promise<Record<ArtistTab, ArtistProfile[
   }
 
   const rows = (await response.json()) as SupabaseArtistRow[];
-  const artistsData = mapRowsToArtistsData(rows);
+  const artistsData = await mapRowsToArtistsData(rows);
 
   return artistTabs.some((tab) => artistsData[tab].length > 0)
     ? artistsData
