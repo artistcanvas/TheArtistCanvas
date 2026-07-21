@@ -128,7 +128,7 @@ export default function Artist({
                 aria-hidden="true"
                 size={18}
                 strokeWidth={2}
-                className="pointer-events-none absolute left-[20px] top-1/2 -translate-y-1/2 text-[#8A8990]"
+                className="pointer-events-none absolute left-[20px] top-1/2 -translate-y-1/2 text-white"
               />
               <input
                 type="text"
@@ -139,7 +139,7 @@ export default function Artist({
                 }}
                 placeholder="아티스트 검색"
                 aria-label="아티스트 이름 검색"
-                className="h-[39px] w-full rounded-full border border-[#181819] bg-transparent pl-[56px] pr-[18px] text-[13px] font-medium text-white outline-none transition-colors placeholder:text-[#4B4A52] focus:border-[#4F4D58] md:text-[14px]"
+                className="h-[39px] w-full rounded-full border border-[#181819] bg-[#181819]/20 pl-[56px] pr-[18px] text-[13px] font-medium text-white outline-none transition-colors placeholder:text-[#4B4A52] focus:border-[#4F4D58] md:text-[14px]"
               />
             </label>
 
