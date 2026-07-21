@@ -92,7 +92,7 @@ export default function Artist({
           <div
             role="tablist"
             aria-label="Artist categories"
-            className="flex gap-[clamp(29px,calc((50/1920)*100vw),50px)] overflow-x-auto md:gap-[46px]"
+            className="flex self-stretch items-end gap-[clamp(29px,calc((50/1920)*100vw),50px)] overflow-x-auto md:gap-[46px]"
           >
             {tabs.map((tab) => {
               const isActive = tab === activeTab;
@@ -115,7 +115,7 @@ export default function Artist({
                 >
                   {tab}
                   {isActive ? (
-                    <span className="absolute inset-x-0 bottom-0 h-[2px] bg-white" />
+                    <span className="absolute inset-x-0 bottom-[0.2] h-[2px] bg-white" />
                   ) : null}
                 </button>
               );
