@@ -1,6 +1,6 @@
 "use client";
 
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronLeft, ChevronRight, Search } from "lucide-react";
 import { useMemo, useState } from "react";
 import SectionHeading from "../layout/SectionHeading";
 import ArtistCard from "./ArtistCard";
@@ -35,25 +35,41 @@ export default function Artist({
 }) {
   const [activeTab, setActiveTab] = useState<ArtistTab>("WITH");
   const [withPage, setWithPage] = useState(1);
+  const [searchQuery, setSearchQuery] = useState("");
   const artists = useMemo(
     () => artistsData[activeTab],
     [activeTab, artistsData],
   );
+  const filteredArtists = useMemo(() => {
+    const normalizedQuery = searchQuery.trim().toLocaleLowerCase();
+
+    if (!normalizedQuery) {
+      return artists;
+    }
+
+    return artists.filter((artist) =>
+      artist.name.toLocaleLowerCase().includes(normalizedQuery),
+    );
+  }, [artists, searchQuery]);
   const withTotalPages = Math.max(
     1,
-    Math.ceil((artistsData.WITH?.length ?? 0) / withArtistsPerPage),
+    Math.ceil(
+      (activeTab === "WITH"
+        ? filteredArtists.length
+        : (artistsData.WITH?.length ?? 0)) / withArtistsPerPage,
+    ),
   );
   const currentWithPage = Math.min(withPage, withTotalPages);
   const visibleArtists = useMemo(() => {
     if (activeTab !== "WITH") {
-      return artists;
+      return filteredArtists;
     }
 
     const startIndex = (currentWithPage - 1) * withArtistsPerPage;
 
-    return artists.slice(startIndex, startIndex + withArtistsPerPage);
-  }, [activeTab, artists, currentWithPage]);
-  const artistCountLabel = `${artists.length} ${activeTab}`;
+    return filteredArtists.slice(startIndex, startIndex + withArtistsPerPage);
+  }, [activeTab, filteredArtists, currentWithPage]);
+  const artistCountLabel = `${filteredArtists.length} ARTISTS`;
   const hasWithPagination = activeTab === "WITH" && withTotalPages > 1;
   const canGoPrev = currentWithPage > 1;
   const canGoNext = currentWithPage < withTotalPages;
@@ -72,7 +88,7 @@ export default function Artist({
       />
 
       <div className="mt-[4px] md:mt-[20px]">
-        <div className="flex items-center justify-between border-b border-[#181819]">
+        <div className="flex items-center justify-between gap-[18px] border-b border-[#181819] md:gap-[24px]">
           <div
             role="tablist"
             aria-label="Artist categories"
@@ -87,7 +103,10 @@ export default function Artist({
                   type="button"
                   role="tab"
                   aria-selected={isActive}
-                  onClick={() => setActiveTab(tab)}
+                  onClick={() => {
+                    setActiveTab(tab);
+                    setWithPage(1);
+                  }}
                   className={`relative shrink-0 pb-[19px] text-[14px] font-medium tracking-[1.3px] uppercase transition-colors ${
                     isActive
                       ? "text-white"
@@ -103,9 +122,31 @@ export default function Artist({
             })}
           </div>
 
-          <p className="hidden text-[clamp(12px,calc((14/1920)*100vw),14px)] font-semibold tracking-[2.42px] text-[#3A393F] md:block">
-            {artistCountLabel}
-          </p>
+          <div className="flex min-w-0 items-center justify-end gap-[18px] pb-[19px]">
+            <label className="relative block w-[52vw] max-w-[236px] min-w-[160px]">
+              <Search
+                aria-hidden="true"
+                size={18}
+                strokeWidth={2}
+                className="pointer-events-none absolute left-[20px] top-1/2 -translate-y-1/2 text-[#8A8990]"
+              />
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(event) => {
+                  setSearchQuery(event.target.value);
+                  setWithPage(1);
+                }}
+                placeholder="아티스트 검색"
+                aria-label="아티스트 이름 검색"
+                className="h-[39px] w-full rounded-full border border-[#181819] bg-transparent pl-[56px] pr-[18px] text-[13px] font-medium text-white outline-none transition-colors placeholder:text-[#4B4A52] focus:border-[#4F4D58] md:text-[14px]"
+              />
+            </label>
+
+            <p className="hidden shrink-0 text-[clamp(12px,calc((14/1920)*100vw),14px)] font-semibold tracking-[2.42px] text-[#3A393F] md:block">
+              {artistCountLabel}
+            </p>
+          </div>
         </div>
 
         <p className="mt-[23px] text-right text-[12px] font-semibold tracking-[2.08px] text-[#3A393F] md:hidden">
@@ -129,6 +170,12 @@ export default function Artist({
             );
           })}
         </div>
+
+        {visibleArtists.length === 0 ? (
+          <p className="mt-[42px] text-center text-[13px] font-medium text-[#55545B]">
+            검색 결과가 없습니다.
+          </p>
+        ) : null}
 
         {hasWithPagination ? (
           <nav
