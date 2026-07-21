@@ -27,6 +27,57 @@ export type ArtistProfile = {
 
 const tabs: ArtistTab[] = ["WITH", "MCN"];
 const withArtistsPerPage = 20;
+const hangulStartCode = 0xac00;
+const hangulEndCode = 0xd7a3;
+const hangulInitialStep = 588;
+const hangulInitials = [
+  "\u3131",
+  "\u3132",
+  "\u3134",
+  "\u3137",
+  "\u3138",
+  "\u3139",
+  "\u3141",
+  "\u3142",
+  "\u3143",
+  "\u3145",
+  "\u3146",
+  "\u3147",
+  "\u3148",
+  "\u3149",
+  "\u314a",
+  "\u314b",
+  "\u314c",
+  "\u314d",
+  "\u314e",
+];
+
+function normalizeSearchText(value: string) {
+  return value.trim().toLocaleLowerCase();
+}
+
+function getHangulInitials(value: string) {
+  return Array.from(value)
+    .map((character) => {
+      const code = character.charCodeAt(0);
+
+      if (code < hangulStartCode || code > hangulEndCode) {
+        return character.toLocaleLowerCase();
+      }
+
+      return hangulInitials[
+        Math.floor((code - hangulStartCode) / hangulInitialStep)
+      ];
+    })
+    .join("");
+}
+
+function matchesArtistSearch(artist: ArtistProfile, query: string) {
+  const normalizedName = normalizeSearchText(artist.name);
+  const initialName = getHangulInitials(artist.name);
+
+  return normalizedName.includes(query) || initialName.includes(query);
+}
 
 export default function Artist({
   artistsData = fallbackArtistsData,
@@ -41,14 +92,14 @@ export default function Artist({
     [activeTab, artistsData],
   );
   const filteredArtists = useMemo(() => {
-    const normalizedQuery = searchQuery.trim().toLocaleLowerCase();
+    const normalizedQuery = normalizeSearchText(searchQuery);
 
     if (!normalizedQuery) {
       return artists;
     }
 
     return artists.filter((artist) =>
-      artist.name.toLocaleLowerCase().includes(normalizedQuery),
+      matchesArtistSearch(artist, normalizedQuery),
     );
   }, [artists, searchQuery]);
   const withTotalPages = Math.max(
@@ -105,6 +156,7 @@ export default function Artist({
                   aria-selected={isActive}
                   onClick={() => {
                     setActiveTab(tab);
+                    setSearchQuery("");
                     setWithPage(1);
                   }}
                   className={`relative shrink-0 pb-[19px] text-[14px] font-medium tracking-[1.3px] uppercase transition-colors ${
